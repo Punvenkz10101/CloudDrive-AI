@@ -33,7 +33,6 @@ dist-ssr
 *.sw?
 
 # Environment variables
-.env
-.env.*
+
 server/.env
-server/.env.*
+
