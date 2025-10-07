@@ -2,8 +2,35 @@ import Navigation from '@/components/layout/Navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Upload as UploadIcon, File, Shield } from 'lucide-react';
+import { API_URL } from '@/lib/config';
+import { getAuthToken } from '@/lib/api';
 
 const Upload = () => {
+  const handleChoose = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = false;
+    input.onchange = async () => {
+      if (!input.files || input.files.length === 0) return;
+      const file = input.files[0];
+      const form = new FormData();
+      form.append('file', file);
+      const token = getAuthToken();
+      const res = await fetch(`${API_URL}/api/files/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: form,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        alert(text || 'Upload failed');
+        return;
+      }
+      const data = await res.json();
+      alert(`Uploaded: ${file.name} (${data.status})`);
+    };
+    input.click();
+  };
   return (
     <div className="min-h-screen bg-beige">
       <Navigation isAuthenticated={true} />
@@ -30,7 +57,7 @@ const Upload = () => {
                 <UploadIcon className="h-12 w-12 text-charcoal/30 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-charcoal mb-2">Drop files here to upload</h3>
                 <p className="text-charcoal/60 mb-4">or click to browse from your device</p>
-                <Button variant="default">
+                <Button variant="default" onClick={handleChoose}>
                   <File className="h-4 w-4 mr-2" />
                   Choose Files
                 </Button>

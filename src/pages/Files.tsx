@@ -2,38 +2,52 @@ import Navigation from '@/components/layout/Navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Files as FilesIcon, Search, Upload, Brain, FileText, Calendar, Download, Eye } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { apiFetch } from '@/lib/api';
+import { API_URL } from '@/lib/config';
 
-// Dummy file data
-const dummyFiles = [
-  { id: 1, name: 'Project_Report_2024.pdf', size: '2.5 MB', type: 'PDF', uploadDate: '2024-01-15', status: 'Clean' },
-  { id: 2, name: 'Financial_Data.xlsx', size: '1.2 MB', type: 'Excel', uploadDate: '2024-01-14', status: 'Clean' },
-  { id: 3, name: 'Marketing_Presentation.pptx', size: '5.8 MB', type: 'PowerPoint', uploadDate: '2024-01-13', status: 'Clean' },
-  { id: 4, name: 'User_Research.docx', size: '890 KB', type: 'Word', uploadDate: '2024-01-12', status: 'Clean' },
-  { id: 5, name: 'Database_Schema.sql', size: '45 KB', type: 'SQL', uploadDate: '2024-01-11', status: 'Clean' },
-  { id: 6, name: 'UI_Mockups.figma', size: '3.2 MB', type: 'Figma', uploadDate: '2024-01-10', status: 'Clean' },
-  { id: 7, name: 'API_Documentation.md', size: '156 KB', type: 'Markdown', uploadDate: '2024-01-09', status: 'Clean' },
-  { id: 8, name: 'Customer_Feedback.csv', size: '678 KB', type: 'CSV', uploadDate: '2024-01-08', status: 'Clean' },
-];
+type FileRow = { id: string; name: string; size: number; uploadDate: string; status: string; downloadUrl: string };
 
 const Files = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [files, setFiles] = useState<FileRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadFiles = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetch('/files');
+      setFiles(res.files || []);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load files');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFiles();
+  }, []);
 
   const filteredFiles = useMemo(() => {
-    if (!searchQuery.trim()) return dummyFiles;
+    if (!searchQuery.trim()) return files;
 
     const query = searchQuery.toLowerCase();
-    return dummyFiles.filter(file =>
+    return files.filter(file =>
       file.name.toLowerCase().includes(query) ||
-      file.type.toLowerCase().includes(query) ||
-      file.uploadDate.includes(query)
+      file.uploadDate.toLowerCase().includes(query)
     );
-  }, [searchQuery]);
+  }, [searchQuery, files]);
 
-  const handleSearch = () => {
-    // AI search functionality would be implemented here
-    console.log('AI Search for:', searchQuery);
+  const handleSearch = async () => {
+    try {
+      const res = await apiFetch(`/search?q=${encodeURIComponent(searchQuery)}`);
+      const names = (res.results || []).map((r: any) => r.name);
+      setFiles((prev) => prev.filter((f) => names.includes(f.name)));
+    } catch (e) { }
   };
 
   return (
@@ -90,7 +104,11 @@ const Files = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {filteredFiles.length === 0 ? (
+              {loading ? (
+                <div className="text-center py-12">Loading…</div>
+              ) : error ? (
+                <div className="text-center py-12 text-red-600">{error}</div>
+              ) : filteredFiles.length === 0 ? (
                 <div className="text-center py-12">
                   <Search className="h-12 w-12 text-charcoal/30 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-charcoal mb-2">No files found</h3>
@@ -101,7 +119,6 @@ const Files = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Type</TableHead>
                       <TableHead>Size</TableHead>
                       <TableHead>Upload Date</TableHead>
                       <TableHead>Status</TableHead>
@@ -117,8 +134,7 @@ const Files = () => {
                             {file.name}
                           </div>
                         </TableCell>
-                        <TableCell>{file.type}</TableCell>
-                        <TableCell>{file.size}</TableCell>
+                        <TableCell>{(file.size / 1024).toFixed(1)} KB</TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-1 text-charcoal/50" />
@@ -132,11 +148,15 @@ const Files = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
-                            <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4" />
+                            <Button asChild variant="ghost" size="sm">
+                              <a href={`${API_URL}${file.downloadUrl}`} target="_blank" rel="noreferrer">
+                                <Eye className="h-4 w-4" />
+                              </a>
                             </Button>
-                            <Button variant="ghost" size="sm">
-                              <Download className="h-4 w-4" />
+                            <Button asChild variant="ghost" size="sm">
+                              <a href={`${API_URL}${file.downloadUrl}`} download>
+                                <Eye className="h-4 w-4" />
+                              </a>
                             </Button>
                           </div>
                         </TableCell>

@@ -1,73 +1,55 @@
-# Welcome to your Lovable project
+# CloudDrive-AI
 
-## Project info
+Secure cloud storage with simple Node.js backend and React frontend.
 
-**URL**: https://lovable.dev/projects/9ba99bef-710b-4d0f-8ca0-b886633b4308
+## Backend Setup (Node.js Express)
 
-## How can I edit this code?
+The project includes a Node.js backend in `server/` for authentication, file upload/storage, and basic search.
 
-There are several ways of editing your application.
+### Prerequisites
+- Node.js 18+
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/9ba99bef-710b-4d0f-8ca0-b886633b4308) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+### Install
+```bash
+npm install
 ```
 
-**Edit a file directly in GitHub**
+### Configure
+Create `server/.env` (see keys below). When developing with Vite on port 8081, you can leave defaults.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```
+PORT=8080
+CLIENT_URL=http://localhost:8081
+JWT_SECRET=change_me
 
-**Use GitHub Codespaces**
+# AWS S3
+AWS_REGION=ap-south-1
+AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY=YOUR_SECRET_ACCESS_KEY
+AWS_S3_BUCKET=clouddrive-ai
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Optionally set `VITE_API_URL` in a `.env` at the project root if hosting frontend and backend separately.
 
-## What technologies are used for this project?
+```
+VITE_API_URL=http://localhost:8080
+```
 
-This project is built with:
+### Run (Frontend + Backend)
+```bash
+npm run dev:full
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+This starts the backend at `http://localhost:8080` and Vite at `http://localhost:5173`.
 
-## How can I deploy this project?
+### Backend Endpoints
+- `POST /api/auth/signup` { email, password }
+- `POST /api/auth/login` { email, password }
+- `GET /api/files` list uploaded files
+- `POST /api/files/upload` multipart form-data field `file`
+- `DELETE /api/files/:id` delete file
+- `GET /api/search?q=term` simple filename search
+- `GET /downloads/:filename` download file
 
-Simply open [Lovable](https://lovable.dev/projects/9ba99bef-710b-4d0f-8ca0-b886633b4308) and click on Share -> Publish.
+Uploaded files are stored under `server/storage/files/`. Files containing the word "virus" are quarantined to `server/storage/quarantine/` as a demo of scanning.
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
