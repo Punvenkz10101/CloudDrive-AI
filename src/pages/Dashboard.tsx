@@ -3,22 +3,21 @@ import { Button } from '@/components/ui/button';
 import Navigation from '@/components/layout/Navigation';
 import {
   Files,
-  Shield,
   Search,
-  AlertTriangle,
   Upload,
   Activity,
-  TrendingUp,
   Database,
   CheckCircle,
   Clock
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/api';
 
 const Dashboard = () => {
-  const stats = [
+  const [stats, setStats] = useState([
     {
       title: 'Total Files',
-      value: '2,847',
+      value: '0',
       change: '',
       changeType: 'positive',
       icon: Files,
@@ -26,52 +25,95 @@ const Dashboard = () => {
     },
     {
       title: 'Storage Used',
-      value: '4.2 GB',
+      value: '0 Bytes',
       change: '',
       changeType: 'neutral',
       icon: Database,
       color: 'golden-brand'
     }
-  ];
+  ]);
+  const [loading, setLoading] = useState(true);
+  const [recentActivity, setRecentActivity] = useState([]);
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'upload',
-      title: 'Document uploaded',
-      description: 'presentation-deck.pdf',
-      time: '2 minutes ago',
-      status: 'scanning',
-      icon: Upload
-    },
-    {
-      id: 2,
-      type: 'scan_complete',
-      title: 'Scan completed',
-      description: 'annual-report.docx - Clean',
-      time: '15 minutes ago',
-      status: 'clean',
-      icon: CheckCircle
-    },
-    {
-      id: 3,
-      type: 'quarantine',
-      title: 'File quarantined',
-      description: 'suspicious-file.exe',
-      time: '1 hour ago',
-      status: 'quarantined',
-      icon: AlertTriangle
-    },
-    {
-      id: 4,
-      type: 'ai_search',
-      title: 'AI search performed',
-      description: 'Query: "financial projections 2024"',
-      time: '2 hours ago',
-      status: 'completed',
-      icon: Search
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const statsData = await apiFetch('/files/stats');
+      const filesData = await apiFetch('/files');
+      
+      // Update stats
+      setStats([
+        {
+          title: 'Total Files',
+          value: statsData.totalFiles?.toLocaleString() || '0',
+          change: '',
+          changeType: 'positive',
+          icon: Files,
+          color: 'emerald-brand'
+        },
+        {
+          title: 'Storage Used',
+          value: statsData.storageUsed || '0 Bytes',
+          change: '',
+          changeType: 'neutral',
+          icon: Database,
+          color: 'golden-brand'
+        }
+      ]);
+
+      // Build recent activity from files
+      const files = filesData.files || [];
+      if (files.length > 0) {
+        const activities = files.slice(0, 5).map((file, idx) => ({
+          id: idx + 1,
+          type: 'upload',
+          title: 'Document uploaded',
+          description: file.name,
+          time: formatTimeAgo(file.uploadDate),
+          status: 'completed',
+          icon: Upload
+        }));
+        setRecentActivity(activities);
+      } else {
+        setRecentActivity([{
+          id: 1,
+          type: 'upload',
+          title: 'No activity yet',
+          description: 'Upload your first file to see activity',
+          time: 'Never',
+          status: 'completed',
+          icon: Upload
+        }]);
+      }
+    } catch (e) {
+      console.error('Failed to load dashboard data:', e);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const formatTimeAgo = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return 'Recently';
+    }
+  };
 
   const quickActions = [
     {
@@ -87,24 +129,13 @@ const Dashboard = () => {
       icon: Search,
       variant: 'hero' as const,
       href: '/files'
-    },
-    {
-      title: 'Security Center',
-      description: 'Review quarantined files',
-      icon: Shield,
-      variant: 'security' as const,
-      href: '/quarantine'
     }
   ];
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'scanning':
-        return <Clock className="w-4 h-4 text-golden-brand" />;
-      case 'clean':
+      case 'completed':
         return <CheckCircle className="w-4 h-4 text-emerald-brand" />;
-      case 'quarantined':
-        return <AlertTriangle className="w-4 h-4 text-rust-brand" />;
       default:
         return <Activity className="w-4 h-4 text-muted-foreground" />;
     }

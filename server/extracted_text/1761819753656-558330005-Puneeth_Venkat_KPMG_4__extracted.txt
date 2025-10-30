@@ -1,0 +1,48 @@
+--- Page 1 ---
+PUNEETH VENKAT M
+Bangalore, India — 9945868617 — puneethvenkat2k03@gmail.com
+LinkedIn — GitHub — _ LeetCode — GeeksforGeeks — Code Ninja
+Profile Summary
+Computer Science undergrad with strong foundations in C, C++, Java, and data structures. Experienced in building web
+applications using React and Node.js, and working with MongoDB/MySQL. Collaborated in team projects to design and
+develop functioning web applications.
+Education
+REVA University, Bangalore
+B.Tech — Computer Science and Engineering (IoT and Cyber Security including Block Chain Technology) 2022 — Present
+CGPA: 8.67
+Bishop Cotton Boys School, Bangalore
+Higher Secondary (ISC)                                                                                           2020 — 2022
+Score: 88%
+Technical Skills
+-e Programming Languages: C, Java, C++ 0
+o Web Development: HTML, CSS, JavaScript React.js, Node.js
+eo Databases: MongoDB, MySQL
+© Tools and Platforms: Git, GitHub, VS Code, Cursor AI
+Internship Experience
+Full Stack Developer Intern                                     PANDAeCe, Bangalore — Oct 2024 - Dec 2024
+© Assisted in building PANDAeCe’s official website using React.js and Node.js, improving overall performance.
+o Learned full-stack web development technologies and gained practical experience through client projects.
+o Contributed to building complete web solutions as per client requirements, improving development skills.
+Projects
+EquiChain — AI + Blockchain Scheme Verification «= ©. Demo
+© Built an Al-powered document verification platform to extract and validate unstructured data, storing results on blockchain.
+° Stack: React.js, Node.js, MongoDB, Ethereum (Sepolia), Web3.js, Gemini API, Azure OCR
+o Impact: Automated the verification workflow, reducing manual processing time and preventing fraudulent entries through
+on-chain validation.
+Track Wise — Collaborative Study Platform                                                                  Demo
+o Developed a study platform with a dashboard for managing notes, schedules, and tasks, featuring a chatbot for queries
+and collaborative rooms with Pomodoro timer, whiteboard, and video calls.
+© Stack: React.js, Node.js, Firebase, MongoDB, Tailwind CSS, ZegoCloud API
+o Impact: Built an interactive study platform used by my friends to make study sessions more engaging and collaborative.
+Motion Following Rover — Integrated Camera and GPS                                                Demo Video
+© Built a four-wheeled rover with motion-following capability, live video feed, and GPS-based navigation.
+© Tech Stack: Arduino Uno, ESP8266 NodeMCU, ESP32-CAM, NEO-6M GPS, Ultrasonic Sensor, IR Sensors
+o Impact: Provided an IoT-robotics solution that assists in defense logistics, supply transport, and remote surveillance.
+Achievements
+eo Winner — Stack Fusion Hackathon: 1** place among 40+ teams for building EquiChain using AI + Blockchain.
+o Winner — DevTrack Project Cycle: Led a team to build StudySphere and won the competition among 20 teams.
+eo Winner — IEDC Idea Pitch: Proposed scalable EdTech with AI chatbot, gamified roadmap, and user rankings.
+Certifications
+-e Foundation of Cyber Security — REVA University,2024 eee
+e Cloud-Based Data Administrator — Salesforce, 2025 (Ongoing)
+eo Programming in Modern C++ — NPTEL, 2024

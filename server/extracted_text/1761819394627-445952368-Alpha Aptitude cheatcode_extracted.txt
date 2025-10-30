@@ -1,0 +1,269 @@
+ALPHA APTITUDE CHEATCODE by Nandhini Raja
+1min/question should be the speed to aim since the number of questions will be generally framed in that way. Basic math tricks are very imp to get the speed.
+To Prepare for Placements in 3months - 
+https://curiousfreakss.com/
+Watch this video to learn the basic math tricks to get to this speed and to use this sheet efficiently- 
+Master Aptitude😳Blueprint to CRACK APTITUDE like PRO🔥
+Follow our channel for coding &amp; Career videos - 
+https://www.youtube.com/@curiousfreaks_/videos
+Categories in Aptitude Round:
+Arithmetic
+Verbal
+Reasoning
+Programming
+Quantitative Aptitude Topics:
+Average
+Time &amp; Distance
+Time &amp; Work
+HCF &amp; LCM
+Train
+Ages
+Profit &amp; Loss
+Permutations &amp; Combinations
+Ratio &amp; Proportion
+Area
+Simple Interest &amp; Compound Interest
+Probability
+Pipes &amp; Cisterns
+Discount
+Clocks &amp; Calendars
+Height and Distance
+Volume &amp; Surface
+Percentage
+Reasoning
+Analytical
+Puzzles
+Blood Relations
+Directions
+Seating Arrangements
+Logical -
+Syllogisms
+Logical connectives
+Assumptions &amp; Conclusions
+Cause &amp; Effect
+Series completion
+Odd one out
+Verbal
+Jumbled sentence
+Passange comprehension
+Spotting errors
+Sentence formation
+Data Sufficiency - Evaluating is the provided data is enough to answer the question.
+Aptitude topic patterns
+Average
+Type 1 : Average of Numbers
+Type 2: Average of weight / age / marks of two or more groups / classes.
+Type 3: Change in average when one entry is added/replaced.
+Type 4 : Change in average when one entry is entered wrong.
+Type 5 : Average speed
+Type 6: Cricket/Scores/Innings
+Learn the patterns - 
+https://www.careerride.com/average.aspx
+ 
+Practice the topic - 
+https://www.indiabix.com/aptitude/average/
+ 
+Video tutorial - 
+https://youtu.be/rhSxQ4ieAYc?si=BqHz6Oi0lGxSNg6F
+Time &amp; Distance
+Type 1: Calculate either time, speed or distance from the other two given parameters.
+Type 2: Calculate speed of two people moving between two points, A and B, in opposite directions &amp; crossing each other on the way.
+Type 3: Finding Relative Speed for two bodies moving in same or opposite directions.
+Type 4: Numericals on Average Speed when the same part of total distance is traveled at two or more different speeds.
+Learn the Patterns - 
+https://www.careerride.com/time-and-distance-aptitude-test.aspx
+Practice questions - 
+https://www.indiabix.com/aptitude/time-and-distance/
+Video tutorial - 
+https://youtu.be/jzNxXm5twx4?si=xfeKhJSIriwFxydv
+Time &amp; Work
+Type 1: Efficiency of two or more workers is give separately. Find how much time would they take to finish the work together.
+Type 2: Find the time required to complete the work
+by one worker if the total time taken by all workers and one of the workers are given.
+either alone or together by the workers for the given times of workers in combined form.
+Type 3: Find the time required
+to complete the work together if one worker is 'm' times as efficient as the other worker &amp; takes 'D' days less than the other worker
+to complete the work by one of the workers if they work together or if work efficiencies of two workers are given.
+Type 4: Calculate the time required by men or (combination of men with other people) to complete a certain work in certain hours for the given another set of number of required men, work &amp; hours.
+Learn the topics from - 
+https://www.careerride.com/time-and-work-aptitude-test.aspx
+Practice questions - 
+https://www.indiabix.com/aptitude/time-and-work/
+Video tutorial - 
+https://youtu.be/KE7tQf9spPg?si=D_Wlnt4wm3zwtowR
+HCF &amp; LCM
+Type 1: Find H.C.F. and L.C.M of composite numbers
+Type 2: Find H.C.F. and L.C.M. of decimal numbers and fractions
+Type 3: Find the numbers/sum of numbers/product of numbers if
+1) Their ratio and H.C.F. are given.
+2) Product of H.C.F. and L.C.M are given.
+Type 4: Find the least number, which when divided by another number leaves a remainder.
+Type 5: Application based numerical of H.C.F. and L.C.M.
+Learn the topics from - 
+https://www.careerride.com/problems-on-H.C.F-and-L.C.M-
+ 
+aptitude-test.aspx
+Practice questions - 
+https://www.indiabix.com/aptitude/problems-on-hcf-and-lcm/
+Video tutorial - 
+https://youtu.be/xyyejJYeILM?si=6fPYbBjI3ULIFMQA
+Train
+Type 1 : I) A train crosses a stationary object on the platform. Find
+the time taken or
+length of train
+Type 2 : I) A train of given length crosses the platform at a given speed. Find:
+Time taken to cross the platform or
+Length of platform
+Type 3: Find time taken by a train to cross a person running in opposite direction at a given speed.
+Type 4: Find time taken by a train to cross a person running in same direction at a given speed.
+Type 5: Find time taken by two trains moving in opposite direction at given speed, to cross each other
+Type 6: Two trains move at a given speed in same direction. Find:
+Time taken to cross each other
+Length of train
+Learn the topic - 
+https://www.careerride.com/problems-on-trains-aptitude-test.aspx
+Practice questions - 
+https://www.indiabix.com/aptitude/problems-on-trains/
+Video tutorial - 
+https://youtu.be/78b4Jn4rw44?si=F5tO9Rk-La5Dpk2b
+Ages
+Type1: Calculate Present age
+Type 2: Numerical to Determine Ages in ratio form
+Type 3: Numerical to Determine Age of a Person before x Years
+Type 4: Numericals to Determine Age of a Person after x Years
+Learn the topic - 
+https://www.careerride.com/problem-on-ages.aspx
+Practice questions - 
+https://www.indiabix.com/aptitude/problems-on-ages/
+Video tutorial - 
+https://youtu.be/tJHl73PBnwY?si=cvF4d79ycjuowowV
+Profit &amp; Loss
+Type 1: To find Profit/Loss or Selling Price/Cost Price.
+Type 2: Calculate profit/loss If cost price of X articles is equal to selling price of Y articles. (C.P. of X articles = S.P. of Y articles)
+Type 3: Find loss incurred by the shopkeeper
+Material A sold at x % gain and material B sold at x % loss.
+Material A sold at x % gain and material B sold at y % loss.
+Type 4: Trader sells goods at cost price but uses a weight of x kg instead of y kg (false weights) and makes profit. Calculate profit.
+Type 5: Numerical on Discount and Successive discounts/profit
+Learn the topic - 
+https://www.careerride.com/profit-and-loss-aptitude-test.aspx
+Practice the topic - 
+https://www.indiabix.com/aptitude/profit-and-loss/
+Video tutorial - 
+https://youtu.be/T2odvmxqi1I?si=kkveC3Yrc39fI4x3
+Ratio &amp; Proportion
+Type 1: Proportion
+Type 2: Division and Distribution of objects into ratios
+Type 3: Mixture of different contents
+Type 4: Income/ Expenditure and Salary
+Type 5: Coins and Values
+Learn the topic - 
+https://www.careerride.com/ratio-and-proportion-aptitude-test.aspx
+Practice the topic -
+ https://www.indiabix.com/aptitude/ratio-and-proportion/
+ 
+Video tutorial - 
+https://youtu.be/jfoJBivWlnQ?si=zQcDJI4wX3R035hW
+Permutation &amp; Combination
+Type 1: Direct Permutation
+Type 2: Direct Combination
+Learn the topic - 
+https://www.careerride.com/permutations-and-combinations.aspx
+ 
+Practice the topic - 
+https://www.indiabix.com/aptitude/permutation-and-combination/
+ 
+Video tutorial -
+Probability
+Probability given direct values with indirect statement
+Probability given indirect values
+Learn the topic - 
+https://www.careerride.com/probability.aspx
+Practice the topic - 
+https://www.indiabix.com/aptitude/probability/
+Video tutorial - 
+https://youtu.be/ximxxERGSUc?si=7L5Qqqv4-1PCuqNI
+Pipes &amp; Cisterns
+Type 1: Find the time to fill/ empty the tank by the pipes together for the given time of individual pipes.
+Type 2: Find the capacity of tank for given
+time of each pipe to fill up a tank if they work alone and
+rate at which outlet pipe can empty the tank.
+Type 3: Find the time taken by leak to empty the tank for given
+a. a) time of pipe to fill a tank &amp;
+b) time taken by leak to fill the tank due to leakage.
+Type 4:
+Find the time taken by two pipes to fill the tank if they work individually if it is given that -
+one pipe is 'm' times faster/slower than another pipe and
+time taken by two pipes to fill the tank together.
+ii) Find the time taken to fill an empty tank for given -
+time of each pipe to fill the tank separately and
+one of the pipes is full-time working and the other 2 pipes are open for certain hour alternately.
+Type 5:
+Find the time taken to fill the tank for given -
+the time of inlet pipes to fill a tank if they work alone and the outlet pipe to empty a tank &amp;
+all pipes are opened but outlet pipe is opened/closed after certain hours
+Find the total time required to fill the tank if -
+the time of each inlet pipe to fill the tank individually and
+all the pipes are opened simultaneously and after certain time, one of the pipes is turned off.
+Learn the topic - 
+https://www.indiabix.com/aptitude/pipes-and-cistern/
+Practice questions - 
+https://www.careerride.com/pipes-and-cistern-aptitude-test.aspx
+Video tutorial - 
+https://youtu.be/mBtBD1N7ywQ?si=wOiRvORbe_I6GueR
+Simple Interest
+Type 1: Find simple interest
+Type 2: Find rate of interest
+Type 3: Find principal or amount
+Practice questions 
+- 
+https://www.indiabix.com/aptitude/simple-interest/
+Learn the topic - 
+https://www.careerride.com/simple-interest-aptitude-test.aspx
+Video tutorial - 
+https://youtu.be/jvRq87ZWzIk?si=n7oSdSO18R1j8sVn
+Compound interest
+Type 1: Numerical based on population
+Type 2: Numerical to find compound interest (yearly, quarterly, and half-yearly)
+Type 3: Numerical to find rate of interest/years
+Type 4: Numerical to find sum/rate of interest when difference between C.I. and S.I. is specified
+Learn the topic - 
+https://www.careerride.com/compound-interest.aspx
+Practice questions - 
+https://www.indiabix.com/aptitude/compound-interest/
+Video tutorial -
+ https://youtu.be/PbUZnzncmR4?si=oB-L7a52asCgghMl
+Discount
+Learn the topic -
+ https://www.careerride.com/true-discount.aspx
+ 
+Practice questions - 
+https://www.indiabix.com/aptitude/true-discount/
+ 
+Video tutorial -
+ 
+https://youtu.be/FW97hRrHcSw?si=yGw2XTq8JjAj-nPo
+Volume &amp; Surface
+Learn the topic - 
+https://
+www.careerride.com/volume-and-surface-area.aspx
+1130300
+215900
+1130300
+215900
+Practice questions - 
+https://www.indiabix.com/aptitude/true-discount/
+Video tutorial - 
+https://youtu.be/2rp_-h6PnFo?si=ItByo1VXdOQ-fBVg
+Height and Distance
+Learn the topic - 
+https://
+www.careerride.com/height-and-distance-aptitude-test.aspx
+1130300
+215900
+1130300
+215900
+Practice questions - 
+https://www.indiabix.com/aptitude/height-and-distance/
+Video tutorial - 
+https://youtu.be/uRA-QqVI3ec?si=MI6Zbf-odN1icuA7

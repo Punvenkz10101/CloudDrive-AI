@@ -27,7 +27,6 @@ const Navigation = ({ isAuthenticated = false }: NavigationProps) => {
     { icon: Files, label: 'Dashboard', path: '/dashboard' },
     { icon: Files, label: 'My Files', path: '/files' },
     { icon: Upload, label: 'Upload', path: '/upload' },
-    { icon: Trash2, label: 'Suspicious Files', path: '/quarantine' },
   ];
 
   if (!isAuthenticated) {
