@@ -3,10 +3,21 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { ensureBucket, uploadBuffer, listFiles, deleteFile, presignUrl } from '../lib/s3.js';
+import { ddosProtection, requireCaptchaVerification } from '../middleware/ddos_protection.js';
+import { calculateFileHash, logUploadEvent } from '../lib/ddos_service.js';
 
 const router = express.Router();
 
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Helper to get client IP
+function getClientIP(req) {
+  return req.ip || 
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    req.headers['x-real-ip'] ||
+    req.connection?.remoteAddress ||
+    '0.0.0.0';
+}
 
 function fakeMalwareScan(filePath) {
   // Simple fake scan: if filename includes "virus" then quarantine.
@@ -62,43 +73,82 @@ router.get('/', async (_req, res) => {
   }
 });
 
-router.post('/upload', upload.single('file'), async (req, res) => {
-  try {
-    const file = req.file;
-    if (!file) return res.status(400).json({ error: 'No file uploaded' });
-    
-    const bucket = process.env.AWS_S3_BUCKET || 'clouddrive-ai-storage';
-    await ensureBucket(bucket);
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.originalname}`;
-    const scan = fakeMalwareScan(unique);
-    let status = 'Clean';
-    let blobName = unique;
-    if (scan === 'infected') {
-      status = 'Quarantined';
-      blobName = `quarantine/${unique}`;
-    }
-    
-    // Save file locally for OCR processing
-    const filesDir = req.storagePaths?.filesDir || path.join(__dirname, '..', 'storage', 'files');
-    if (!fs.existsSync(filesDir)) {
-      fs.mkdirSync(filesDir, { recursive: true });
-    }
-    const localPath = path.join(filesDir, blobName);
-    fs.writeFileSync(localPath, file.buffer);
-    
-    // Upload to S3
-    await uploadBuffer(bucket, blobName, file.buffer, file.mimetype);
-    const url = await presignUrl(bucket, blobName, 1800);
-    
-    // Immediately return response (non-blocking)
-    res.json({ 
-      id: blobName, 
-      name: file.originalname, 
-      size: file.size, 
-      status, 
-      downloadUrl: url,
-      message: 'File uploaded successfully. OCR processing started in background.'
-    });
+router.post('/upload', 
+  ddosProtection,
+  requireCaptchaVerification,
+  upload.single('file'), 
+  async (req, res) => {
+    try {
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: 'No file uploaded' });
+      
+      const startTime = Date.now();
+      const userId = req.user?.userId || req.user?.id || `ip_${getClientIP(req)}`;
+      const ipAddress = getClientIP(req);
+      
+      // Calculate file hash for duplicate detection
+      const fileHash = calculateFileHash(file.buffer);
+      
+      const bucket = process.env.AWS_S3_BUCKET || 'clouddrive-ai-storage';
+      await ensureBucket(bucket);
+      const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.originalname}`;
+      const scan = fakeMalwareScan(unique);
+      let status = 'Clean';
+      let blobName = unique;
+      if (scan === 'infected') {
+        status = 'Quarantined';
+        blobName = `quarantine/${unique}`;
+      }
+      
+      // Save file locally for OCR processing
+      const filesDir = req.storagePaths?.filesDir || path.join(__dirname, '..', 'storage', 'files');
+      if (!fs.existsSync(filesDir)) {
+        fs.mkdirSync(filesDir, { recursive: true });
+      }
+      const localPath = path.join(filesDir, blobName);
+      fs.writeFileSync(localPath, file.buffer);
+      
+      // Upload to S3
+      await uploadBuffer(bucket, blobName, file.buffer, file.mimetype);
+      const url = await presignUrl(bucket, blobName, 1800);
+      
+      const uploadDuration = Date.now() - startTime;
+      
+      // Log upload event for ML analysis (non-blocking)
+      logUploadEvent({
+        timestamp: new Date().toISOString(),
+        user_id: userId,
+        ip_address: ipAddress,
+        file_hash: fileHash,
+        file_size: file.size,
+        filename: file.originalname,
+        upload_duration_ms: uploadDuration,
+        success: 1,
+        error: null
+      }).catch(err => {
+        console.error('[DDoS] Failed to log upload event:', err);
+      });
+      
+      // Immediately return response (non-blocking)
+      const response = {
+        id: blobName, 
+        name: file.originalname, 
+        size: file.size, 
+        status, 
+        downloadUrl: url,
+        fileHash,
+        message: 'File uploaded successfully. OCR processing started in background.'
+      };
+      
+      // Include risk information if available
+      if (req.ddosRisk) {
+        response.security = {
+          riskLevel: req.ddosRisk.risk_level,
+          anomalyScore: req.ddosRisk.anomaly_score
+        };
+      }
+      
+      res.json(response);
     
     // Process with OCR in background (non-blocking)
     const supportedTypes = [

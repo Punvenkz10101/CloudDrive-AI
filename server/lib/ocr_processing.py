@@ -199,6 +199,24 @@ class OCRProcessor:
         """Extract text from image using OCR with enhanced preprocessing"""
         try:
             logger.info(f"Processing image: {image_path}")
+            
+            # Verify file exists and is readable
+            if not os.path.exists(image_path):
+                raise FileNotFoundError(f"Image file not found: {image_path}")
+            
+            # Try to open and verify it's a valid image
+            try:
+                image = Image.open(image_path)
+                # Verify the image by loading it
+                image.verify()
+            except Exception as img_error:
+                # If verify() fails, try opening again (verify() closes the file)
+                try:
+                    image = Image.open(image_path)
+                except Exception as img_error2:
+                    raise ValueError(f"Cannot identify image file '{image_path}'. The file may be corrupted or not a valid image format. Error: {str(img_error2)}")
+            
+            # Re-open the image for processing (verify() closes it)
             image = Image.open(image_path)
             processed_image = self._preprocess_image(image)
             
@@ -211,6 +229,11 @@ class OCRProcessor:
             )
             
             return text.strip()
+        except FileNotFoundError:
+            raise
+        except ValueError as ve:
+            logger.error(f"Invalid image file {image_path}: {str(ve)}")
+            raise
         except Exception as e:
             logger.error(f"Error processing image {image_path}: {str(e)}")
             raise

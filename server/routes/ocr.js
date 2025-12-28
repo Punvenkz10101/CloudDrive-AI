@@ -35,6 +35,23 @@ router.post('/process', async (req, res) => {
       return res.status(400).json({ error: 'File path and name are required' });
     }
     
+    // Check if file exists and is readable
+    if (!fs.existsSync(filePath)) {
+      console.warn(`[OCR Process] File not found: ${filePath}`);
+      return res.status(404).json({ error: 'File not found', success: false });
+    }
+    
+    // Check file size
+    try {
+      const stats = fs.statSync(filePath);
+      if (stats.size === 0) {
+        console.warn(`[OCR Process] File is empty: ${filePath}`);
+        return res.status(400).json({ error: 'File is empty', success: false });
+      }
+    } catch (err) {
+      console.warn(`[OCR Process] Cannot read file stats: ${err.message}`);
+    }
+    
     // Ensure extracted_text directory exists
     const extractedTextDir = path.join(__dirname, '..', 'extracted_text');
     if (!fs.existsSync(extractedTextDir)) {

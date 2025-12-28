@@ -6,11 +6,18 @@
   "scripts": {
     "dev": "vite",
     "server": "node server/index.js",
+    "ddos": "cd ddos_system/Application_Layer_DDOS && powershell -ExecutionPolicy Bypass -File ./run_ddos_system.ps1",
     "dev:full": "concurrently \"npm:server\" \"npm:dev\"",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "ddos:train": "cd ddos_system/Application_Layer_DDOS && powershell -ExecutionPolicy Bypass -File ./train_ddos_model.ps1",
+    "ddos:quick": "cd ddos_system/Application_Layer_DDOS && powershell -ExecutionPolicy Bypass -File ./quick_train.ps1",
+    "attack": "powershell -ExecutionPolicy Bypass -File ./attack_interface.ps1",
+    "attack:rapid": "powershell -ExecutionPolicy Bypass -File ./ddos_attack_simulator.ps1 -AttackType rapid -Duration 60",
+    "attack:duplicate": "powershell -ExecutionPolicy Bypass -File ./ddos_attack_simulator.ps1 -AttackType duplicate -Duration 60",
+    "attack:massive": "powershell -ExecutionPolicy Bypass -File ./ddos_attack_simulator.ps1 -AttackType massive -Duration 60"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.679.0",

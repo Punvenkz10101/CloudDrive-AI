@@ -37,3 +37,12 @@ dist-ssr
 .env.*
 server/.env
 server/.env.*
+
+# DDoS System Generated Files
+server/storage/files/*
+!server/storage/files/.gitkeep
+ddos_system/Application_Layer_DDOS/data/upload_logs.csv
+ddos_system/Application_Layer_DDOS/data/extracted_features.csv
+__pycache__/
+*.pyc
+server/lib/ocr_process_temp.py

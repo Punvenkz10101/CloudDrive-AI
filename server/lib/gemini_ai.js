@@ -13,6 +13,8 @@ const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 // Cache for working model to avoid repeated detection
 let cachedWorkingModel = null;
+let availableModelsCache = null;
+let modelsListAttempted = false;
 
 /**
  * Retry function with exponential backoff for rate limit errors
@@ -34,6 +36,42 @@ async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) {
       throw error;
     }
   }
+}
+
+/**
+ * List available models from Gemini API
+ * This helps us discover which models are actually available
+ */
+async function listAvailableModels() {
+  if (availableModelsCache) {
+    return availableModelsCache;
+  }
+
+  if (!genAI) {
+    return [];
+  }
+
+  try {
+    // Try to fetch available models using the REST API
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`);
+    if (response.ok) {
+      const data = await response.json();
+      const models = (data.models || [])
+        .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+        .map(m => m.name.replace('models/', ''));
+      
+      if (models.length > 0) {
+        availableModelsCache = models;
+        console.log(`[Gemini] Found ${models.length} available models: ${models.join(', ')}`);
+        return models;
+      }
+    }
+  } catch (error) {
+    console.log(`[Gemini] Could not list models via API: ${error.message}`);
+  }
+
+  // Fallback to known working models
+  return [];
 }
 
 /**
@@ -69,33 +107,63 @@ export async function getAIAnswer(query, context) {
       }
     }
     
-    // Prepare list of models to try (in order of preference)
-    // Based on official Gemini API: https://ai.google.dev/models/gemini
-    // Latest models: gemini-2.0-flash, gemini-1.5-flash, gemini-1.5-pro
-    let modelsToTry = [
-      process.env.GEMINI_MODEL, // User-specified first (if set)
-      'gemini-2.0-flash',       // Latest 2.0 model (from official API docs)
-      'gemini-2.0',             // 2.0 variant
-      'gemini-1.5-flash',       // Fast model (widely available)
-      'gemini-1.5-pro',         // Pro model (better quality)
-      'gemini-pro',             // Legacy model (fallback)
-      // Variants with -latest suffix (try if standard names don't work)
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-pro-latest',
-    ].filter(Boolean); // Remove undefined values
-    
-    // Default fallback
-    if (modelsToTry.length === 0) {
-      modelsToTry.push('gemini-2.0-flash');
+    // Try to discover available models first (only once)
+    let availableModels = [];
+    if (!modelsListAttempted) {
+      modelsListAttempted = true;
+      availableModels = await listAvailableModels();
+    } else if (availableModelsCache) {
+      availableModels = availableModelsCache;
     }
+
+    // Prepare list of models to try (in order of preference)
+    // Start with user-specified model, then try discovered models, then fallback to known models
+    let modelsToTry = [];
+    
+    // 1. User-specified model first
+    if (process.env.GEMINI_MODEL) {
+      modelsToTry.push(process.env.GEMINI_MODEL);
+    }
+    
+    // 2. Cached working model if available
+    if (cachedWorkingModel && !modelsToTry.includes(cachedWorkingModel)) {
+      modelsToTry.push(cachedWorkingModel);
+    }
+    
+    // 3. Available models from API discovery (prioritize common ones)
+    const priorityModels = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest'];
+    for (const priorityModel of priorityModels) {
+      if (availableModels.includes(priorityModel) && !modelsToTry.includes(priorityModel)) {
+        modelsToTry.push(priorityModel);
+      }
+    }
+    
+    // 4. Other discovered models
+    for (const model of availableModels) {
+      if (!modelsToTry.includes(model)) {
+        modelsToTry.push(model);
+      }
+    }
+    
+    // 5. Fallback to known models (in order of reliability)
+    const fallbackModels = [
+      'gemini-1.5-flash',      // Most common newer model
+      'gemini-1.5-pro',        // Pro version
+      'gemini-pro',            // Legacy but widely available
+      'gemini-1.5-flash-latest', // Latest variant
+      'gemini-1.5-pro-latest',  // Latest pro variant
+    ];
+    
+    for (const fallbackModel of fallbackModels) {
+      if (!modelsToTry.includes(fallbackModel)) {
+        modelsToTry.push(fallbackModel);
+      }
+    }
+    
+    // Remove duplicates
+    modelsToTry = [...new Set(modelsToTry)];
     
     console.log(`[Gemini] Will try ${modelsToTry.length} models in order: ${modelsToTry.join(', ')}`);
-    
-    // Use cached model if available and it's still in our list
-    if (cachedWorkingModel && modelsToTry.includes(cachedWorkingModel)) {
-      console.log(`[Gemini] Using cached model: ${cachedWorkingModel}`);
-      modelsToTry = [cachedWorkingModel, ...modelsToTry.filter(m => m !== cachedWorkingModel)];
-    }
     
     const prompt = `You are an expert document analysis assistant. Analyze the OCR-extracted text from user's documents and provide accurate, well-formatted, professional answers.
 
@@ -134,13 +202,16 @@ Provide a well-formatted, professional answer based EXCLUSIVELY on the OCR-extra
     
     // Helper function to try a model with retry logic
     const tryModel = async (modelName) => {
-      return await retryWithBackoff(async () => {
+      try {
         const testModel = genAI.getGenerativeModel({ model: modelName });
         result = await testModel.generateContent(prompt);
         response = await result.response;
         answer = response.text();
         return answer;
-      }, 3, 2000); // 3 retries with 2s initial delay
+      } catch (error) {
+        // Re-throw to be handled by retry logic
+        throw error;
+      }
     };
     
     // Try each model in order until one works
@@ -148,7 +219,11 @@ Provide a well-formatted, professional answer based EXCLUSIVELY on the OCR-extra
       const modelName = modelsToTry[i];
       try {
         console.log(`[Gemini] [${i + 1}/${modelsToTry.length}] Attempting model: ${modelName}`);
-        answer = await tryModel(modelName);
+        
+        // Use retry logic for rate limits, but not for model-not-found errors
+        answer = await retryWithBackoff(async () => {
+          return await tryModel(modelName);
+        }, 3, 2000); // 3 retries with 2s initial delay
         
         // Success! Cache this model and break
         cachedWorkingModel = modelName;
@@ -157,36 +232,70 @@ Provide a well-formatted, professional answer based EXCLUSIVELY on the OCR-extra
         break;
       } catch (modelError) {
         const errorMsg = modelError.message || String(modelError);
-        console.log(`[Gemini] ✗ Model ${modelName} failed (${i + 1}/${modelsToTry.length}): ${errorMsg.substring(0, 150)}`);
+        const errorStr = errorMsg.substring(0, 200);
+        console.log(`[Gemini] ✗ Model ${modelName} failed (${i + 1}/${modelsToTry.length}): ${errorStr}`);
         lastError = modelError;
         
+        // Check error type
+        const isModelNotFound = errorMsg.includes('not found') || 
+                               errorMsg.includes('404') || 
+                               errorMsg.includes('not supported') ||
+                               errorMsg.includes('is not found for API version');
+        
+        const isRateLimit = errorMsg.includes('429') || 
+                           errorMsg.includes('Too Many Requests') || 
+                           errorMsg.includes('Resource exhausted') ||
+                           errorMsg.includes('RATE_LIMIT');
+        
+        const isAuthError = errorMsg.includes('API key') || 
+                           errorMsg.includes('401') || 
+                           errorMsg.includes('403') ||
+                           errorMsg.includes('authentication');
+        
         // If it's a model-not-found error, continue to next model
-        if (errorMsg.includes('not found') || errorMsg.includes('404') || errorMsg.includes('not supported')) {
+        if (isModelNotFound) {
           if (i < modelsToTry.length - 1) {
-            console.log(`[Gemini] → Trying next model...`);
+            console.log(`[Gemini] → Model not found, trying next model...`);
             continue;
           } else {
-            // Last model failed
-            throw new Error(`All ${modelsToTry.length} models failed. Last error: ${errorMsg}`);
-          }
-        }
-        
-        // If it's a rate limit error, try next model instead of failing
-        if (errorMsg.includes('429') || errorMsg.includes('Too Many Requests') || errorMsg.includes('Resource exhausted')) {
-          console.log(`[Gemini] Rate limit for ${modelName}, trying next model...`);
-          if (i < modelsToTry.length - 1) {
+            // Last model failed - but don't throw yet, we'll handle it below
             continue;
           }
         }
         
-        // For other errors, don't try other models (likely API key issue, etc.)
-        throw modelError;
+        // If it's a rate limit error, try next model (retries already attempted)
+        if (isRateLimit) {
+          console.log(`[Gemini] Rate limit for ${modelName}, trying next model...`);
+          if (i < modelsToTry.length - 1) {
+            // Wait a bit before trying next model
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            continue;
+          }
+        }
+        
+        // If it's an auth error, don't try other models
+        if (isAuthError) {
+          throw new Error(`AUTH_ERROR: ${errorMsg}`);
+        }
+        
+        // For other errors, continue to next model (might be temporary)
+        if (i < modelsToTry.length - 1) {
+          console.log(`[Gemini] → Error with ${modelName}, trying next model...`);
+          continue;
+        }
       }
     }
     
     // If we tried all models and none worked
     if (!answer) {
-      throw new Error(`Could not find a working Gemini model. Tried: ${modelsToTry.join(', ')}. Last error: ${lastError?.message || 'Unknown'}`);
+      const errorMsg = lastError?.message || 'Unknown error';
+      const isModelNotFound = errorMsg.includes('not found') || errorMsg.includes('404');
+      
+      if (isModelNotFound) {
+        throw new Error(`MODEL_NOT_FOUND: None of the ${modelsToTry.length} Gemini models worked with your API key. Tried: ${modelsToTry.slice(0, 5).join(', ')}${modelsToTry.length > 5 ? '...' : ''}. All returned "model not found" errors. Please verify your API key at https://makersuite.google.com/app/apikey and ensure it has access to Gemini models.`);
+      }
+      
+      throw new Error(`Could not find a working Gemini model. Tried ${modelsToTry.length} models: ${modelsToTry.slice(0, 3).join(', ')}${modelsToTry.length > 3 ? '...' : ''}. Last error: ${errorMsg.substring(0, 200)}`);
     }
     
     return answer.trim();
@@ -194,23 +303,26 @@ Provide a well-formatted, professional answer based EXCLUSIVELY on the OCR-extra
   } catch (error) {
     console.error('Gemini API error:', error);
     
+    const errorMsg = error.message || String(error);
+    
     // Check for rate limit errors - throw so caller can handle with retry logic
-    if (error.message && (error.message.includes('429') || error.message.includes('Too Many Requests') || error.message.includes('Resource exhausted'))) {
-      // Throw the error so the search route can handle retries
-      throw new Error('RATE_LIMIT: 429 Too Many Requests - Resource exhausted');
+    if (errorMsg.includes('429') || errorMsg.includes('Too Many Requests') || errorMsg.includes('Resource exhausted') || errorMsg.includes('RATE_LIMIT')) {
+      throw new Error('RATE_LIMIT: 429 Too Many Requests - Resource exhausted. Please wait a moment and try again.');
     }
     
-    // Provide helpful error messages for common issues and throw
-    if (error.message && (error.message.includes('not found for API version') || error.message.includes('not found') || error.message.includes('404'))) {
-      throw new Error(`MODEL_NOT_FOUND: None of the available Gemini models worked with your API key. The system tried multiple models (gemini-1.5-flash-latest, gemini-1.5-pro-latest, etc.) but all returned "model not found" errors. Please check your API key and model availability.`);
+    // Check for auth errors
+    if (errorMsg.includes('AUTH_ERROR') || errorMsg.includes('API key') || errorMsg.includes('401') || errorMsg.includes('403')) {
+      throw new Error('INVALID_API_KEY: Invalid or missing Gemini API key. Please check your GEMINI_API_KEY in the .env file and verify it at https://makersuite.google.com/app/apikey');
     }
     
-    if (error.message && error.message.includes('API key')) {
-      throw new Error('INVALID_API_KEY: Invalid or missing Gemini API key. Please check your GEMINI_API_KEY in the .env file.');
+    // Check for model not found errors
+    if (errorMsg.includes('MODEL_NOT_FOUND') || errorMsg.includes('not found for API version') || errorMsg.includes('not found') || errorMsg.includes('404')) {
+      // Re-throw the error message we already created
+      throw error;
     }
     
-    // Throw generic error
-    throw new Error(`Gemini API error: ${error.message}`);
+    // Throw generic error with more context
+    throw new Error(`Gemini API error: ${errorMsg}`);
   }
 }
 

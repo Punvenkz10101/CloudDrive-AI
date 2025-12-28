@@ -11,6 +11,7 @@ import authRouter from './routes/auth.js';
 import filesRouter from './routes/files.js';
 import searchRouter from './routes/search.js';
 import ocrRouter from './routes/ocr.js';
+import ddosRouter from './routes/ddos.js';
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -24,6 +25,14 @@ const storageBase = path.join(__dirname, 'storage');
 const filesDir = path.join(storageBase, 'files');
 const quarantineDir = path.join(storageBase, 'quarantine');
 [storageBase, filesDir, quarantineDir].forEach((dir) => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
+
+// Ensure DDoS system directories exist
+const ddosSystemRoot = path.join(__dirname, '..', 'ddos_system', 'Application_Layer_DDOS');
+const ddosDataDir = path.join(ddosSystemRoot, 'data');
+const ddosModelDir = path.join(ddosSystemRoot, 'model');
+[ddosDataDir, ddosModelDir].forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
@@ -67,6 +76,13 @@ try {
   console.log('✓ Registered /api/ocr routes');
 } catch (e) {
   console.error('✗ Failed to register OCR routes:', e);
+}
+
+try {
+  app.use('/api/ddos', ddosRouter);
+  console.log('✓ Registered /api/ddos routes');
+} catch (e) {
+  console.error('✗ Failed to register DDoS routes:', e);
 }
 
 // Serve downloads statically (validated paths handled in router)
