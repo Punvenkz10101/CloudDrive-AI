@@ -1,53 +1,137 @@
-# 🚀 Quick Reference: Running Everything
+# ⚡ DDoS System - QUICK REFERENCE CARD
 
-## ✅ Yes, Everything is Fine!
+## 🚀 ONE-MINUTE START
 
-Your system is running correctly. The DDoS warnings you see are **expected** and non-critical. The system has graceful fallbacks.
+```bash
+# Terminal 1: Start server
+npm run server
+
+# Terminal 2: Launch attack
+npm run attack:bot-same-ip
+
+# Browser: View admin dashboard
+http://localhost:5173/admin
+```
+
+Login → DDoS Metrics → Threat Map Tab → See red circle at **Bengaluru, India** 🎯
 
 ---
 
-## 🎯 Main Commands
+## 🎯 THREE KEY FEATURES IMPLEMENTED
 
-### **Start the Application**
-```powershell
-npm run dev:full
-```
-- Frontend: http://localhost:5173
-- Backend: http://localhost:8080
-- DDoS Dashboard: http://localhost:5173/ddos
+### 1. ✅ Attack from Laptop Location
+Auto-detects: `115.99.149.114` (your public IP)  
+Geo-location: **Bengaluru, Karnataka, India**  
+All attacks from single origin point  
+Threat map shows red circle at exact location  
 
----
+### 2. ✅ Dashboard Stays Clean During Attack
+Blocked files: **HIDDEN** from file list  
+CSV filtering: Removes all `success=0` entries  
+Users see: Only clean uploads  
+Attack payloads: Never visible  
 
-## 🤖 DDoS Attack Simulator
-
-### **Run a Simulated Attack** (while server is running)
-
-Open a **NEW terminal** and run:
-
-#### **Option 1: Rapid Fire Attack** (recommended to test first)
-```powershell
-npm run attack:rapid
-```
-
-#### **Option 2: Duplicate File Spam**
-```powershell
-npm run attack:duplicate
-```
-
-#### **Option 3: Massive File Flooding**
-```powershell
-npm run attack:massive
-```
+### 3. ✅ Adaptive Defense
+Requests 1-7: RATE_LIMITED (⚠️ 429)  
+Request 8+: BLOCKED (🚫 403)  
+Threshold: 8 requests per 45 seconds  
+Escalation: Automatic burst detection  
 
 ---
 
-## 📊 Watch the Attack
+## 📊 TEST COMMANDS
 
-1. **Keep `npm run dev:full` running** in original terminal
-2. **Run attack** in new terminal: `npm run attack:rapid`
-3. **Open dashboard**: http://localhost:5173/ddos
-4. **Watch in real-time:**
-   - Upload count increases
+```bash
+# Attack 1: Same-IP bot flood
+npm run attack:bot-same-ip
+
+# Attack 2: Rapid duplicate upload
+npm run attack:rapid-duplicate
+
+# Attack 3: Combined strategy
+npm run attack:combined
+
+# Stop any attack: Ctrl+C
+
+# Check CSV results
+tail -20 ddos_system/Application_Layer_DDOS/data/upload_logs.csv
+
+# Count blocked events
+grep "success.*0" ddos_system/Application_Layer_DDOS/data/upload_logs.csv | wc -l
+```
+
+---
+
+## 🗺️ THREAT MAP VERIFICATION
+
+**Expected Output**:
+```
+Admin Dashboard
+    ├─ DDoS Metrics tab
+    ├─ Click "Threat Map"
+    └─ 🔴 Red pulsing circle in Bengaluru region
+       └─ Click for popup:
+          ├─ City: Bengaluru, India
+          ├─ Address: Bldg 550, Flat 1, MG Road
+          ├─ Bot: attacker_alpha_01
+          └─ Hits: 5+
+```
+
+**If map is empty**:
+1. Run attack: `npm run attack:bot-same-ip`
+2. Refresh dashboard (Ctrl+Shift+R)
+3. Wait 5 seconds for polling
+4. Map should show red circles
+
+---
+
+## 🛡️ DEFENSE ESCALATION
+
+```
+Attacker sends requests:
+├─ Req 1-7: RATE_LIMITED (score 0.4-0.7)
+├─ Req 8+: BLOCKED (score > 0.7 OR burst >= 8)
+└─ Result: All requests in CSV have success=0
+
+Dashboard effect:
+├─ Blocked filenames collected from CSV
+├─ File listing filtered by blockedSet.has(filename)
+└─ No attack files appear in dashboard
+```
+
+---
+
+## 📁 FILE FILTERING
+
+**During Attack**:
+```
+CSV logging:
+├─ rapid_flood_1018830662.txt → success=0 ❌
+├─ rapid_flood_1201272259.txt → success=0 ❌
+└─ All attack files logged with success=0
+
+Dashboard shows:
+├─ document.pdf ✅ (success=1, not blocked)
+├─ screenshot.png ✅ (success=1, not blocked)
+└─ [Attack files] ❌ (success=0, hidden by filter)
+```
+
+---
+
+## 🔧 CUSTOMIZATION
+
+### Escalation Threshold
+**File**: `server/routes/ddos.js` (line 507)
+```javascript
+const burstCount = trackSimulatorBurst(String(userId));
+const shouldForceMalicious = burstCount >= 8;  // ← CHANGE THIS
+```
+
+### Escalation Window
+**File**: `server/routes/ddos.js` (line 508)
+```javascript
+const windowMs = 45 * 1000;  // ← CHANGE THIS (milliseconds)
+```
    - Risk scores calculated
    - Behavioral patterns analyzed
 

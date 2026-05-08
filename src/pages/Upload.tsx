@@ -62,9 +62,12 @@ const Upload = () => {
         const form = new FormData();
         form.append('file', file);
         const token = getAuthToken();
+        const headers: any = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        
         const res = await fetch(`${API_URL}/api/files/upload`, {
           method: 'POST',
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          headers,
           body: form,
         });
 

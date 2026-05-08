@@ -1,0 +1,1759 @@
+left
+-1141730
+0
+0
+Informatica® Multidomain MDM 10.5 HotFix 5
+ 
+Installation Guide for Microsoft SQL Server with Red Hat JBoss
+Table of Contents
+ TOC \o "1-3" \h \z \u 
+Section
+Page
+Preface
+1
+1.1 Informatica Resources
+1
+2. 
+Installation Overview
+2
+3. 
+Pre-Installation Tasks
+3
+3.1 Prepare for Installation
+3
+3.2 Prepare the Environment
+4
+3.3 Set Up the Database Environment
+6
+3.3.1 Install and Configure Microsoft SQL Server
+6
+3.3.2 Enable TCP/IP Network Protocol
+10
+3.3.3 Create Microsoft SQL Server Data File Store
+11
+3.3.4 Create the ActiveVOS Database
+12
+4. 
+Set Up the Application Server Environment
+14
+4.1 Additional Java Virtual Machine Configuration
+14
+4.2 Configure Server Properties for Full Profile (JBoss Standalone)
+16
+4.3 Configure Transport Layer Security (TLS)
+18
+4.4 Create the ActiveVOS Console Administrative User
+20
+4.5 Configure Timeout Properties
+21
+4.6 Configure Security for Java SE 17
+23
+4.7 Starting Standalone JBoss (Windows)
+25
+5. 
+Hub Store Installation
+26
+5.1 Create the MDM Hub Master Database
+26
+5.2 Create an Operational Reference Store (ORS)
+28
+5.3 Import Metadata into Master Database
+30
+5.4 Import Metadata into ORS
+31
+6. 
+Hub Server Installation
+33
+6.1 Install the Hub Server
+33
+7. 
+Hub Server Post-Installation Tasks
+35
+7.1 Configure the Master Database Name
+35
+7.2 Deploy Hub Server Applications
+36
+7.3 Start the Hub Console
+38
+7.4 Register Operational Reference Store
+40
+8. 
+Process Server Installation
+43
+9. 
+ActiveVOS Post-Installation Tasks
+45
+9.1 Edit ActiveVOS Security Domain
+45
+10. 
+Errors Faced and Troubleshooting
+48
+10.1 Invalid Object Name C_REPOS_USER
+48
+10.2 Deployment Stuck at .isdeploying
+49
+10.3 JBoss Remote Port Conflict
+50
+10.4 ActiveVOS Login Insufficient Privileges
+51
+1.
+Preface
+1.1
+Informatica Resources
+Informatica Knowledge Base 
+Use the Informatica Knowledge Base to find product resources such as how-to articles, best practices, video tutorials, and answers to frequently asked questions. 
+To search the Knowledge Base, visit 
+https://search.informatica.com
+.
+Informatica Documentation 
+Use the Informatica Documentation Portal to explore an extensive library of documentation for current and recent product releases. To explore the Documentation Portal, visit 
+https://docs.informatica.com
+.
+Informatica Product Availability Matrix for Informatica Multidomain MDM, Release 10.5 HF5 1
+https://knowledge.informatica.com/s/article/PAM-for-Informatica-MDM-Multidomain-10-5HF5?language=en_US
+Installation Overview
+Component
+Description
+MDM Hub Master Database
+A schema that stores and consolidates business data for 
+the MDM
+ Hub. Contains environment configuration settings such as user accounts, security configuration, Operational Reference Store registry, and message queue settings. You can access and manage Operational Reference Stores from the Master Database. Default name is CMX_SYSTEM, but a custom name can be used. Multiple Master Databases can exist in the same database instance.
+Operational Reference Store (ORS)
+A schema that stores and consolidates business data for 
+the MDM
+ Hub. Contains master data, content metadata, and rules to process and manage the master data. Separate ORS databases can be configured for different geographies, departments, or environments (dev/prod). ORS databases can also be distributed across multiple servers. Default name is CMX_ORS.
+Hub Server
+A
+ application deployed on an application server. Processes data stored within the MDM Hub and 
+integrates
+ with external applications. Manages core and common services for 
+the MDM
+ Hub.
+Process Server
+A
+ application deployed on an application server. Processes batch jobs such as load
+ 
+and revalidate. Performs data cleansing and match operations. Interfaces with the cleanse engine to standardize and optimize data for match and consolidation.
+Informatica 
+ActiveVOS
+®
+A BPM tool required internally by 
+the MDM
+ Hub for processing data. Supports automated business processes including change-approval workflows. Ensures master data changes go through review and approval before inclusion in records. When installed with Hub Server, it installs 
+ActiveVOS
+ Server, 
+ActiveVOS
+ Console, Process Central, and predefined MDM workflows, tasks, and roles.
+Pre-Installation Tasks
+3.1 
+Prepare
+ 
+for
+ 
+Installation
+Before
+ 
+you
+ 
+install
+ 
+the
+ 
+MDM
+ 
+Hub,
+ 
+prepare
+ 
+for
+ 
+the
+ 
+installation.
+ The
+ 
+following
+ 
+table
+ 
+describes
+ 
+the
+ 
+preparatory
+ 
+tasks
+ 
+for
+ 
+the
+ 
+installation:
+Task
+Description
+Read
+ 
+the
+ 
+Release
+ 
+Notes
+Read the latest 
+Multidomain MDM Release Notes 
+for updates to the installation and upgrade
+ 
+process.
+Important: 
+Some versions of application servers and databases have known limitations
+ 
+when running Multidomain MDM. Ensure that you perform all suggested workarounds.
+Read the Product
+ 
+Availability
+ 
+Matrix
+Read the Product Availability Matrix (PAM) for information about product requirements and
+ 
+supported platforms. You can access PAMs at
+ 
+https://network.informatica.com/community/informatica-network/product-availability-matrices
+.
+Download
+ 
+and
+ 
+extract
+ the installer files
+Download the installation files from the Informatica Electronic Software Download site to a
+ 
+directory on your machine. To extract the compressed files, use an extraction utility that
+ 
+also
+ 
+extracts
+ 
+empty
+ 
+folders.
+Download
+ 
+and
+ 
+extract
+ 
+the
+ 
+following
+ 
+installation
+ 
+files:
+MDM
+ 
+Hub
+ 
+installer
+ 
+for
+ 
+the
+ 
+operating
+ 
+system
+Database
+ 
+files
+ActiveVOS
+ 
+Server
+ 
+installer
+ 
+for
+ 
+the
+ 
+operating
+ 
+system
+3.2 
+Prepare
+ 
+the
+ 
+Environment
+1. Verify Minimum System Requirements
+Make sure the system meets the following minimum requirements:
+Disk Space:
+ 4.9 GB 
+RAM (Development Environment):
+ 4 GB
+2. Install Java Development Kit (JDK)
+Install a 
+supported JDK version
+ before installing MDM Hub. 
+JDK is 
+not bundled
+ with the MDM installer. 
+For 
+JBoss
+, install 
+Azul Zulu JDK provided by Informatica
+. 
+Use the 
+same Java version
+ on: 
+Application Server 
+Hub Console machine
+3
+. Set Environment Variables
+Set the following variables to point to the JDK directory:
+JAVA_HOME (Required) 
+PATH (Required) 
+Set additional variable for schema export:
+Windows
+set JAVA_TOOL_OPTIONS= --
+add-opens=java.xml/com.sun.org.apache.xml
+.
+internal.serialize
+=ALL-UNNAMED
+4
+. Disable Insecure TLS Cipher Suites
+Open the file:
+..
+/
+jdk
+&lt;version&gt;/
+jre
+/lib/security/
+java.security
+Locate: 
+jdk.tls.disabledAlgorithms
+Update value:
+jdk.tls.disabledAlgorithms
+ = SSLv3, RC4, MD5withRSA, DH 
+keySize
+ &lt; 1024,
+EC 
+keySize
+ &lt; 224, DES40_CBC, RC4_40, 3DES_EDE_CBC,
+EDH-RSA-DES-CBC3-SHA, ECDHE-RSA-DES-CBC3-SHA, DES-CBC3-SHA
+3.3 
+Set
+ 
+Up
+ 
+the
+ 
+Database
+ Environment
+Before creating the 
+MDM Hub Master Database
+ and 
+Operational Reference Store (ORS)
+, configure the database environment.
+Tasks to Perform
+Install and configure Microsoft SQL Server 
+Create a data file store 
+Install ODBC driver 
+Create the 
+ActiveVOS
+ schema
+3.3.1
+ Install and Configure Microsoft SQL Server
+Install and configure Microsoft SQL Server based on Microsoft documentation.
+A
+. Install Microsoft SQL Server
+Install a 
+supported version
+ of Microsoft SQL Server. 
+Authentication Mode:
+Mixed Mode (SQL Server + Windows Authentication)
+B
+. Configuring Microsoft SQL Server for Distributed Transactions
+Step 1. Enable DTC Network Access
+Press Windows + R 
+Type:
+dcomcnfg
+Navigate:
+Component Services
+→
+ Computers
+→
+ My Computer
+→
+ Distributed Transaction Coordinator
+→
+ Local DTC
+Right-click Local DTC 
+→
+ Properties 
+Go to Security tab 
+Enable:
+Network DTC Access 
+Allow Remote Clients 
+Allow Inbound 
+Allow Outbound 
+No Authentication Required (for local setup) 
+Click OK 
+→
+ Restart service if prompted
+Why is it needed?
+Enabling DTC Network Access allows the Windows Distributed Transaction Coordinator to manage transactions between JBoss and SQL Server, ensuring operations across multiple components commit or roll back together.
+Step 2. Enable XA Transactions
+Still in the same Security tab:
+Enable XA Transactions
+Why is it needed?
+Enabling XA Transactions allows SQL Server to participate in two-phase commit transactions, ensuring all operations across JBoss and the database are completed or rolled back together consistently.
+Step 3. Download JDBC Driver
+Download Microsoft JDBC Driver for SQL Server 
+Extract it 
+You will get a folder like:
+sqljdbc_x.x
+\
+Step 
+4
+. Copy XA DLL file
+Find:
+sqljdbc_xa.dll
+Copy it to:
+C:\Program Files\Microsoft SQL Server\MSSQLXX.MSSQLSERVER\MSSQL\Binn
+Step 5. Run XA SQL Script
+Open SQL Server Management Studio (SSMS) 
+Connect as 
+sa
+ / admin 
+Open file: 
+&lt;
+jdbc
+ driver folder&gt;\xa\
+xa_install.sql
+Execute the script 
+Why is it needed?
+Copying the sqljdbc_xa.dll and running the 
+xa_install.sql
+ script registers SQL Server for XA distributed transactions, enabling JBoss and SQL Server to participate in coordinated commit and rollback operations.
+Step 6. Verify Setup
+Run this query:
+SELECT
+ 
+*
+ 
+FROM
+ 
+sys.database
+_principals
+ 
+WHERE
+ name 
+=
+ 
+'
+SqlJDBCXAUser
+'
+3.3.2
+. Enable TCP/IP Network Protocol
+Configure SQL Server to use 
+TCP/IP protocol
+:
+Steps:
+Open 
+SQL Server Configuration Manager
+ 
+Navigate to:
+SQL Server Network Configuration → Protocols for MSSQLSERVER
+ 
+Enable 
+TCP/IP
+ 
+Restart SQL Server service
+Why is it needed?
+Enabling the TCP/IP protocol allows external applications like JBoss and the MDM Hub to connect to SQL Server over the network using the database host and port.
+3.3.3.
+ Create Microsoft SQL Server Data File Store
+Ensure a 
+SQL Server data file store
+ exists before creating:
+MDM Hub Master Database 
+Operational Reference Store (ORS) 
+You must provide the 
+data file store path
+ during database creation.
+3.3.4.
+ Create the 
+ActiveVOS
+ Database
+To install 
+ActiveVOS
+, create the 
+ActiveVOS
+ database using the 
+create_bpm
+ script.
+Steps
+Open Command Prompt 
+Navigate to:
+&lt;MDM Hub distribution directory&gt;\database\bin
+Run the command:
+sip_ant.bat 
+create_bpm
+Answer the prompts (press 
+Enter
+ to use default values)
+Prompt Details
+Property
+Description
+Database Type
+Enter MSSQL
+ActiveVOS
+ 
+User Name
+Database name (
+avos
+)
+ActiveVOS
+ User Password
+Password for 
+ActiveVOS
+ DB
+ActiveVOS
+ Collation Name
+Latin1_General_CI_AS
+ActiveVOS
+ Database Host Name
+PUNEETHVE-LTW
+ActiveVOS
+ Database Path
+C:\Puneeth_MDM\MDM_Data
+DBA 
+User Name
+SQL Server 
+sa
+ user
+DBA Password
+Password for 
+sa
+ user
+4.
+ 
+Set Up the Application Server Environment
+4.1 
+Additional
+ 
+Java
+ 
+Virtual
+ 
+Machine
+ 
+Configuration
+Step 1. Stop JBoss
+Stop your JBoss server before editing.
+Step 2. Open the configuration file
+Go to:
+&lt;JBoss installation directory&gt;\bin\standalone.conf.bat
+Step 3. Add the JVM properties
+Add the following lines 
+at the end of the file
+ (or below existing JAVA_OPTS):
+Fixes 
+ActiveVOS
+ login and prevents HTTPS redirection problems during local setup.
+set "JAVA_OPTS=%JAVA_OPTS% -
+Dae.mail.
+default.charset
+=US-ASCII 
+-
+Dae.web.filter.https
+.force
+=false --
+add-opens=java.xml/com.sun.org.apache.xerces.internal.dom
+=ALL-UNNAMED"
+Gives enough memory to JBoss so MDM and 
+ActiveVOS
+ run without crashes.
+set "JBOSS_JAVA_SIZING=-Xms1G -Xmx5G -
+XX:MetaspaceSize
+=96M -
+XX:MaxMetaspaceSize
+=1G --add-exports=java.xml/com.sun.org.apache.xml.internal.serialize=ALL-UNNAMED --add-opens=
+java.base
+/
+java.lang
+=ALL-UNNAMED --add-opens=
+java.base
+/
+java.lang.reflect
+=ALL-UNNAMED --add-opens=
+java.base
+/java.net=ALL-UNNAMED --add-
+opens=
+java.base
+/
+jdk.internal.loader
+=ALL-UNNAMED"
+Removes Java security restrictions that can block ORS creation.
+set "JAVA_OPTS=%JAVA_OPTS% -
+Djdk.serialFilter
+=*"
+Allows MDM to generate APIs and schemas properly.
+set "JAVA_OPTS=%JAVA_OPTS% --add-exports=
+jdk.compiler
+/
+com.sun.tools.javac.main
+=ALL-UNNAMED"
+Fixes session and login issues in Hub Console and 
+ActiveVOS
+.
+set "JAVA_OPTS=%JAVA_OPTS% -
+Dio.undertow.legacy
+.
+cookie.ALLOW
+_HTTP_SEPARATORS_IN_V0=true"
+Step 4. Save the file
+Press 
+Ctrl + S
+ 
+Close Notepad
+Step 5. Restart JBoss
+Start JBoss again:
+standalone.bat
+ 
+Configure Server Properties for Full Profile (JBoss Standalone)
+You must configure server properties in:
+&lt;
+JBoss_Home
+&gt;\standalone\configuration\standalone-full.xml
+Step 1: Start JBoss Server (Full Profile)
+Open Command Prompt and run:
+cd C:\Puneeth_MDM\jboss-eap-8.1\bin
+standalone.bat --server-config=standalone-full.xml
+Step 2: Open JBoss CLI
+Open another command prompt:
+cd C:\Puneeth_MDM\jboss-eap-8.1\bin
+jboss-cli.bat
+Connect to server:
+C
+onnect
+1. Configure Transaction Timeout
+This defines how long MDM transactions can run.
+Recommended value: 
+3600 seconds (1 hour)
+Run:
+/subsystem=
+transactions:write
+-attribute(name=default-
+timeout,value
+=3600)
+2. Configure Maximum Upload File Size
+Increases file upload size limit for Data Director and bulk data uploads.
+Recommended: 
+20000000 or higher
+Run:
+/subsystem=undertow/server=default-server/http-listener=
+default:write
+-attribute(name=max-post-
+size,value
+=20000000)
+Then run:
+Applies the same upload size limit when using HTTPS connections.
+/
+subsystem=undertow/server=default-server/https-listener=
+https:write
+-attribute
+ 
+(name=max-post-
+size,value
+=20000000)
+3. Configure Remoting Connector
+Required to access 
+Hub Console remotely
+Step 3.1 Add Socket Binding
+Opens port 4447 so external tools (Hub Console, installer) can connect to JBoss.
+Run:
+/
+socket
+-binding-group=standard-sockets/socket-binding=
+remoting:add
+(port=4447)
+Step 3.2 Add Remoting Connector
+Enables remote communication channel used by Hub Server and Process Server.
+Run:
+/subsystem=remoting/connector=remoting-
+connector:add
+(socket-binding=remoting)
+Step 3: Save Configuration
+Run in CLI:
+reload
+or restart JBoss.
+4.3 
+Configure Transport Layer Security (TLS)
+PART 1: Configure TLS (JBoss / Java level)
+Step 1: Edit Java security file
+Go to your JDK:
+C:\MDM
+_Installation
+\zulu17...\conf\security\java.security
+ Find this line:
+jdk.tls.disabledAlgorithms
+=
+Replace / ensure it contains:
+jdk.tls.disabledAlgorithms
+=SSLv3, TLSv1, TLSv1.1, RC4, MD5withRSA, DH 
+keySize
+ &lt; 1024, EC 
+keySize
+ &lt; 224, DES40_CBC, RC4_40, 3DES_EDE_CBC
+What this does
+ Disables:
+TLS 1.0 
+TLS 1.1 
+ Allows:
+TLS 1.2 
+TLS 1.3 
+PART 2: Secure HTTP Response Headers (JBoss)
+Step 1: Open JBoss CLI
+cd C:\Puneeth_MDM\jboss-eap-8.1\bin
+jboss-cli.bat
+connect
+Step 2: Remove X-Powered-By header
+/subsystem=undertow/configuration=filter/response-header=X-Powered-
+By:add
+(header-name=X-Powered-
+By,header
+-value="")
+Step 3: Remove Server header
+/subsystem=undertow/configuration=filter/response-header=server-
+header:add
+(header-name=
+Server,header
+-value="")
+/subsystem=undertow/server=default-server/host=default-host/filter-ref=server-
+header:add
+()
+Step 
+4
+: Reload JBoss
+reload
+4.4 
+Create
+ 
+the
+ 
+ActiveVOS
+ 
+Console
+ 
+Administrative
+ 
+User
+If you want to use 
+ActiveVOS
+, create the 
+ActiveVOS
+ Console administrative user with the 
+abAdmin
+ 
+role. If you do not create an administrative user, the Hub Server deployment fails. Use the 
+ActiveVOS
+ Console
+ 
+administrative
+ 
+user
+ 
+name
+ 
+and
+ 
+password
+ 
+when
+ 
+the
+ 
+Hub
+ 
+Server
+ 
+installer
+ 
+prompts
+ 
+you
+ 
+to
+ 
+enter
+ 
+the administrative user credentials for the 
+ActiveVOS
+ Console.
+ 
+Step 1 — Open Command Prompt
+Go to your JBoss bin folder:
+cd C:\
+ 
+JBoss
+ 
+installation
+ 
+directory
+ \bin
+ 
+Step 2 — Run add-user utility
+Run:
+add-user.bat
+Step 3-
+ Enter the values
+Prompt
+Value to Enter
+What type of user do you wish to add? (a/b)
+b
+Realm (
+ApplicationRealm
+)
+ApplicationRealm
+Username
+avadmin
+ 
+Password
+Password
+Re-enter Password
+Passwor
+d
+What roles do you want this user to belong to?
+abAdmin
+Is this correct? (yes/no)
+yes
+Is this user for AS process to connect to another AS process?
+yes
+4.5 
+Configure Timeout Properties
+To address any potential API timeout errors that may occur during the Operational Reference Store (ORS)
+ 
+specific API generation and the Java Message Service (JMS) schema generation, configure the timeout
+ 
+properties in the standalone-full.xml
+ 
+file. You can access the file from the following directory: &lt;JBoss 
+installation
+ 
+directory&gt;/standalone/configuration.
+ 
+To
+ 
+configure
+ 
+the
+ 
+server
+ 
+properties,
+ 
+run
+ 
+the
+ 
+relevant
+ commands of the configuration from the JBoss Command Line Interface (CLI).
+Step 
+1
+ — Go to configuration folder
+Navigate to:
+C:\jboss-eap-8.1\standalone\configuration
+Step 
+2
+ — Open standalone-full.xml
+Step 
+3
+ — Find &lt;server name="default-server"&gt;
+Search for:
+&lt;server name="default-server"&gt;
+Step 
+4
+ — Locate &lt;http-listener&gt;
+You will see something like:
+&lt;http-listener name="default" socket-binding="http" ... /&gt;
+Step 
+5
+ — Add timeout properties
+Modify the line to include:
+read-timeout="180000" write-timeout="180000"
+Step 
+6
+ — Save file
+Step 
+7
+ — Start JBoss again
+Go to:
+C
+:
+\jboss-eap-8.1\bin
+Run:
+standalone.bat --server-config=standalone-full.xml
+Why this is needed
+This prevents:
+ORS API generation timeout 
+JMS schema generation failure 
+Hub deployment hanging 
+4.6 
+Configure Security for Java SE 17 (JBoss EAP 8 + 
+ActiveVOS
+)
+Step 1: Create Trusted User (Windows)
+Navigate to:
+&lt;
+JBoss_Home
+&gt;\bin
+Run:
+add-user.bat
+Provide the following inputs
+Prompt
+Value
+User Type
+b (Application User)
+Realm
+ActiveVOSSecurityRealm
+Username
+avtrusted
+Password
+P
+assword
+Roles
+abTrust,abServiceConsumer
+,abTaskClient
+Confirm
+yes
+Used for AS process
+yes
+Step 2: Edit standalone-full.xml
+Open file:
+&lt;
+JBoss_Home
+&gt;\standalone\configuration\standalone-full.xml
+Step 3: Add Security Domain
+Locate &lt;security-domains&gt; section and add:
+&lt;security-domain name="
+ActiveVOS
+" default-realm="
+ActiveVOSSecurityRealm
+"
+ permission-mapper="default-permission-mapper"&gt;
+ &lt;realm name="
+ActiveVOSSecurityRealm
+" role-decoder="groups-to-roles"/&gt;
+ &lt;realm name="local"/&gt;
+&lt;/security-domain&gt;
+Step 4: Add Security Realm
+Locate &lt;security-realms&gt; section and add:
+&lt;properties-realm name="
+ActiveVOSSecurityRealm
+"&gt;
+ &lt;users-properties path="
+applicationUsers.properties
+"
+ relative-to="
+jboss.server.config.dir
+"/&gt;
+ &lt;groups-properties path="
+applicationRoles.properties
+"
+ relative-to="
+jboss.server.config.dir
+"/&gt;
+&lt;/properties-realm&gt;
+Step 5: Add HTTP Authentication Factory
+Locate &lt;http-authentication-factory&gt; section and add:
+&lt;http-authentication-factory name="
+activevos
+-http-authentication"
+ security-domain="
+ActiveVOS
+"
+ http-server-mechanism-factory="global"&gt;
+ &lt;mechanism-configuration&gt;
+ &lt;mechanism mechanism-name="BASIC"&gt;
+ &lt;mechanism-realm realm-name="
+ActiveVOSSecurityRealm
+"/&gt;
+ &lt;/mechanism&gt;
+ &lt;mechanism mechanism-name="FORM"&gt;
+ &lt;mechanism-realm realm-name="
+ActiveVOSSecurityRealm
+"/&gt;
+ &lt;/mechanism&gt;
+ &lt;mechanism mechanism-name="CLIENT_CERT"&gt;
+ &lt;mechanism-realm realm-name="
+ActiveVOSSecurityRealm
+"/&gt;
+ &lt;/mechanism&gt;
+ &lt;/mechanism-configuration&gt;
+&lt;/http-authentication-factory&gt;
+Step 6: Update Undertow Subsystem
+Find:
+ 
+&lt;subsystem 
+xmlns
+="
+urn:jboss
+:
+domain:undertow
+:1
+4
+.0"
+Modify to include:
+default-security-domain="
+ActiveVOS
+"
+step 7:
+To
+ 
+add
+ 
+the
+ 
+user
+ 
+and
+ 
+role
+ 
+properties
+ 
+files,
+ 
+add
+ 
+the
+ 
+applicationUsers.properties
+ 
+and 
+applicationRoles.properties
+ 
+files to the &lt;
+jboss
+-server-path&gt;\standalone\configuration 
+directory.
+4.7 
+Starting Standalone JBoss (Windows)
+Step 1: Navigate to JBoss bin directory
+Open Command Prompt and go to:
+&lt;
+JBoss_Home
+&gt;\bin
+Step 2: Start JBoss
+Run the following command:
+standalone.bat -c standalone-full.xml -b 0.0.0.0 -
+Djboss.as.management.blocking
+.timeout
+=5000
+Successful Startup
+JBoss starts successfully when you see:
+JBoss EAP started in 
+XXXXms
+Verify Server
+Open browser:
+http://localhost:8080
+5
+. 
+Hub
+ Store
+ 
+Installation
+5.1 
+Create the MDM Hub Master Database
+Step 1: Navigate to Database Scripts
+Open Command Prompt and go to:
+&lt;
+MDM_Home
+&gt;\database\bin
+Step 2: Run Database Creation Script
+Execute:
+sip_ant.bat 
+create_system
+Step 3: Provide Required Inputs
+Press 
+Enter
+ to accept defaults where applicable.
+Prompt
+Value / Description
+Enter database type
+MSSQL
+Enter database host name
+PUNEETHVE-LTW
+Enter database port
+1433
+Enter master database name
+cmx_system
+ (default)
+Enter master database user password
+Password for CMX_SYSTEM
+Enter CMX_SYSTEM database path
+"C:\MSSQLDATA" 
+Enter CMX_SYSTEM database collation
+Latin1_General_CI_AS
+Enter locale name
+en_US
+Enter DBA 
+user name
+sa
+Enter DBA password
+SQL Server SA password
+5.2 
+Create an Operational Reference Store (ORS)
+Step 1: Navigate to Database Scripts
+Open Command Prompt and go to:
+&lt;
+MDM_Home
+&gt;\database\bin
+Step 2: Run ORS Creation Script
+Execute:
+sip_ant.bat 
+create_ors
+Step 3: Provide Required Inputs
+Press 
+Enter
+ to use defaults.
+Prompt
+Value / Description
+Enter database type
+MSSQL
+Enter ORS host name
+localhost
+Enter ORS port
+1433
+Enter ORS schema name
+cmx_ors
+Enter CMX_ORS database path
+"C:\MSSQLDATA"
+Enter CMX_ORS collation
+Latin1_General_CI_AS
+Enter ORS database password
+Password for CMX_ORS
+Enter locale
+en_US
+Enter DBA user
+sa
+Enter DBA password
+SQL Server SA password
+5.3 
+Import Metadata into the MDM Hub Master Database
+Step 1: Navigate to Database Scripts
+Open Command Prompt and go to:
+&lt;
+MDM_Home
+&gt;\database\bin
+Step 2: Run Metadata Import Script
+Execute:
+sip_ant.bat 
+import_system
+Step 3: Provide Required Inputs
+Press 
+Enter
+ to use defaults where applicable.
+Prompt
+Value / Description
+Enter database type
+MSSQL
+Enter database host name
+localhost
+Enter database port
+1433
+Connect URL
+jdbc:sqlserver
+://localhost:1433
+Enter master database name
+cmx_system
+Enter master database password
+CMX_SYSTEM password
+Enter locale
+en_US
+ 
+Import Metadata into the Operational Reference Store (ORS)
+Step 1: Navigate to Database Scripts
+Open Command Prompt and go to:
+&lt;
+MDM_Home
+&gt;\database\bin
+Step 2: Run Metadata Import Script
+Execute:
+sip_ant.bat 
+import_ors
+Step 3: Provide Required Inputs
+Press 
+Enter
+ to accept defaults where applicable.
+Prompt
+Value / Description
+Enter database type
+MSSQL
+Enter ORS host name
+localhost
+Enter ORS port
+1433
+Enter ORS database name
+cmx_ors
+Connect URL
+jdbc:sqlserver
+://localhost:1433
+Enter ORS password
+CMX_ORS password
+Enter locale
+en_US
+Timeline granularity
+3 (Day – recommended)
+6
+. 
+Hub 
+Server
+ 
+Installation
+6.1 
+Install the Hub Server (Installation Wizard)
+Step 1: Start JBoss
+If not already started:
+cd C:\Puneeth_MDM\jboss-eap-8.1\bin
+standalone.bat -c standalone-full.xml -b 0.0.0.0
+Step 2: Navigate to Installer Location
+Go to:
+&lt;
+MDM_Home
+&gt;\&lt;OS&gt;\
+mrmserver
+Step 3: Start the Installer
+Double-click:
+hub_install.exe
+The Hub Server Installation Wizard opens.
+Step 
+4
+: Follow Installation Wizard
+Click Next and provide required details:
+V
+alues:
+Field
+Example
+Install Directory
+C:\infamdm
+Application Server
+JBoss
+JBoss Home
+C:\Puneeth_MDM\jboss-eap-8.1
+Database Type
+Microsoft SQL Server
+Master Database
+cmx_system
+ORS Database
+cmx_ors
+Step 
+5
+: Deploy Hub Server
+At the final screen, choose deployment option:
+Deploy Automatically (Recommended)
+Hub Server is deployed during installation 
+No manual deployment required 
+Deploy Later
+You must deploy Hub Server manually after installation 
+Step 
+6
+: Click Install
+Click 
+Install
+ to begin installation.
+7
+. 
+Hub
+ 
+Server
+ 
+Post-Installation 
+Tasks
+7.1 
+Configure the MDM Hub Master Database Name
+Perform this step only if the Master Database name is 
+not CMX_SYSTEM
+.
+Step 1: Navigate to the Configuration Folder
+Go to the following directory:
+&lt;MDM Hub installation directory&gt;\hub\server\resources
+Step 2: Open 
+cmxserver.properties
+Open the file:
+cmxserver.properties
+using Notepad or any text editor.
+Step 3: Locate the Property
+Find the following line:
+cmx.
+server.masterdatabase
+.schemaname
+=CMX_SYSTEM
+Step 4: Update the Database Name
+If your Master Database name is different, replace 
+CMX_SYSTEM
+ with your database name.
+Example:
+cmx.
+server.masterdatabase
+.schemaname
+=YOUR_DATABASE_NAME
+Step 5: Save the File
+Save the changes and close the file.
+Step 6: Restart JBoss
+Restart the JBoss application server for the changes to take effect.
+7.2 
+Use a Script to Deploy the Hub Server Applications
+Step 1.
+ Open 
+Command Prompt
+.
+Step 2.
+ Change to the Hub Server directory:
+cd &lt;MDM Hub installation directory&gt;\hub\server
+Step 
+3
+. Run the script
+If you did NOT install bundled 
+ActiveVOS
+postInstallSetup.bat -
+Ddatabase.password
+=&lt;MDM Hub Master database password&gt;
+If you DID install bundled 
+ActiveVOS
+postInstallSetup.bat ^
+-
+Ddatabase.password
+=&lt;MDM Hub Master database password&gt; ^
+-
+Davos.username
+=&lt;
+ActiveVOS
+ Console username&gt; ^
+-
+Davos.password
+=&lt;
+ActiveVOS
+ Console password&gt; ^
+-
+Davos.jdbc.database
+.username
+=&lt;
+ActiveVOS
+ database username&gt; ^
+-
+Davos.jdbc.database
+.password
+=&lt;
+ActiveVOS
+ database password&gt;
+The 
+ActiveVOS
+ Console credentials are the same credentials as the administrative user in the application server.
+The
+ 
+ActiveVOS
+ 
+database
+ 
+credentials
+ 
+are
+ 
+the
+ 
+same
+ 
+credentials
+ 
+that
+ 
+were
+ 
+used
+ 
+to
+ 
+run
+ 
+the
+ 
+create_bpm
+ 
+script.
+7.3 
+Start the Hub Console
+Step 1.
+ Make sure JBoss / Hub Server is running.
+Step 2.
+ Open a browser.
+Step 3.
+ Enter the URL:
+http://&lt;MDM Hub host&gt;:&lt;port number&gt;/cmx/
+Step 4.
+ Hub Console launch page appears.
+Enter:
+User name
+-admin 
+ 
+Password
+-admin
+Click Download.
+ 
+Step 5.
+ Download hubConsole.jar.
+If download fails, get it from:
+&lt;MDM Hub installation directory&gt;\hub\server\resources\hub
+Step 6. 
+Run the JAR file
+java -jar hubConsole.jar
+Step 
+7
+.
+ Informatica MDM Hub Login dialog appears
+Enter:
+User name
+ 
+Password 
+Click 
+OK
+Step 
+8
+.
+ Change Database dialog appears
+Select MDM Hub Master Database (
+cmx_system
+) 
+Select language 
+Click 
+Connect
+ 
+7.4 
+Register an Operational Reference Store (ORS)
+Step 1.
+ Start Hub Console
+Open Hub Console 
+Login 
+Step 2.
+ Connect to Master Database
+Change Database dialog appears 
+Select MDM Hub Master Database (
+cmx_system
+) 
+Click Connect
+Step 3.
+ Open Databases Tool
+Go to Configuration Workbench 
+Click Databases 
+Step 4.
+ Acquire Write Lock
+Click Write Lock 
+Select Acquire Lock 
+Step 5.
+ Register Database
+Click Register Database button 
+Step 6.
+ Select Database Type
+Choose Microsoft SQL Server 
+Click 
+Next
+Step 7. 
+Enter Connection Properties
+Fill the fields:
+Field
+What to enter
+Database Display Name
+ors_cmx
+Machine Identifier
+S1.
+Database hostname
+localhost or DB server IP
+Port
+1433
+Database Name
+ORS database name (example: 
+cmx_ors
+)
+Username
+ORS DB user
+Password
+ORS DB password
+Step 8.
+ 
+Click 
+Finish
+The 
+Reistering
+ Database
+ 
+dialog box appears.
+Step 9.
+ 
+Click 
+OK
+The MDM Hub registers the Operational Reference Store
+.
+Step 10.
+ 
+Select the Operational Reference Store
+ 
+that you 
+registered, and
+ click the 
+Test database
+ 
+connection
+ button.
+The Test Database dialog box displays the result of the database connection test.
+Step 11.
+ 
+Click 
+OK
+The Operational Reference Store
+ 
+is registered, and the connection to the database is tested.
+8
+. 
+Process
+ 
+Server
+ 
+Installation
+Step 1. Start Application Server
+Start 
+JBoss / application server
+.
+Step 2. Navigate to Directory
+Go to:
+&lt;MDM Hub distribution directory&gt;\&lt;operating system name&gt;\
+mrmcleanse
+Step 3. Start Installer (Windows)
+Double-click:
+hub_cleanse_install.exe
+The 
+Process Server Installation Wizard
+ starts.
+Step 
+4
+. Follow Installation Wizard
+Click 
+Next
+ 
+Enter required installation values 
+Continue clicking 
+Next
+Step 
+5
+. Install
+Click 
+Install
+9
+. 
+ActiveVOS
+ Post-Installation Tasks for the Application Server
+9.1 
+Edit
+ 
+the
+ 
+ActiveVOS
+ 
+Security
+ 
+Domain
+ 
+in
+ 
+JBoss
+Step 1. Open configuration file
+Open:
+&lt;JBoss installation directory&gt;\standalone\configuration\standalone.xml
+Step 2. Update Undertow Default Security Domain
+Find:
+default-security-domain="
+ActiveVOS
+"
+Change to:
+default-security-domain="other"
+Step 3. Update Application Security Domains
+Find:
+&lt;application-security-domains&gt;
+ &lt;application-security-domain name="other" security-domain="
+ApplicationDomain
+"/&gt;
+&lt;/application-security-domains&gt;
+Replace with:
+&lt;application-security-domains&gt;
+ &lt;application-security-domain name="other" security-domain="
+ApplicationDomain
+" integrated-
+jaspi
+="false"/&gt;
+ &lt;application-security-domain name="
+ActiveVOS
+" security-domain="
+ActiveVOS
+" integrated-
+jaspi
+="false"/&gt;
+&lt;/application-security-domains&gt;
+Step 4. Update 
+ActiveVOS
+ Properties Realm
+Locate:
+&lt;properties-realm name="
+ActiveVOSSecurityRealm
+"&gt;
+ &lt;users-properties path="
+applicationUsers.properties
+" relative-to="
+jboss.server.config.dir
+"/&gt;
+ &lt;groups-properties path="
+applicationRoles.properties
+" relative-to="
+jboss.server.config.dir
+"/&gt;
+&lt;/properties-realm&gt;
+Change to:
+&lt;properties-realm name="
+ActiveVOSSecurityRealm
+"&gt;
+ &lt;users-properties path="application-
+users.properties
+" relative-to="
+jboss.server.config.dir
+"/&gt;
+ &lt;groups-properties path="application-
+roles.properties
+" relative-to="
+jboss.server.config.dir
+"/&gt;
+&lt;/properties-realm&gt;
+Step 5. Save the file
+Step 6. Restart JBoss
+Stop and start JBoss server.
+10
+. 
+Errors I faced and troubleshooting
+ 
+Post-Install Phase Errors
+ Error 1 — Invalid object name C_REPOS_USER
+Error Message
+:
+Invalid object name 'C_REPOS_USER'
+Root Cause
+SQL Server login 
+sa
+ default database was set to 
+master
+ 
+postInstallSetup
+ script connected to 
+master DB
+ 
+Table C_REPOS_USER exists in 
+cmx_system
+, not in 
+master
+ 
+Query execution failed 
+I
+ changed the default database for 
+sa
+ to 
+cmx_system
+:
+Query: 
+ALTER LOGIN 
+sa
+ WITH DEFAULT_DATABASE = 
+cmx_
+system
+;
+Result
+Script connected to correct database 
+add_app_users
+ step completed 
+Post-install moved forward successfully 
+ 
+10.2 
+Error 2 — Deployment stuck 
+at .
+isdeploying
+Folder :
+siperian-mrm.ear.isdeploying
+Post-install log showed:
+Waiting for deployment of 
+siperian-mrm.ear
+This was not an actual error — deployment was still in progress:
+JBoss 
+undeploying
+ old applications 
+Repackaging EAR 
+Initializing caches 
+Starting services 
+Fix Applied
+Waited for deployment to complete 
+JBoss finished deployment 
+.deployed
+ file appeared automatically 
+Result
+EAR deployed successfully 
+MDM services started 
+Installation finished 
+10.3 
+Error 3 — JBoss Remote Port Conflict / Connection Failure
+Problem
+During MDM Hub installation:
+Remote Port = 4447
+Installation failed due to connection error because:
+JBoss remoting connector not configured 
+Port not listening 
+Root cause
+Hub installer failed to connect to JBoss 
+Remote connection validation failed 
+No listener on port 4447 
+Troubleshooting steps
+Identified missing remoting connector and updated standalone-full.xml:
+&lt;subsystem 
+xmlns
+="
+urn:jboss
+:
+domain:remoting
+:7.0"&gt;
+ &lt;endpoint worker="default"/&gt;
+ &lt;connector name="remoting-connector" socket-binding="remoting"/&gt;
+&lt;/subsystem&gt;
+Added socket binding:
+&lt;socket-binding name="remoting" port="4447"/&gt;
+Restarted JBoss
+Resolution
+Port 4447 started listening 
+Hub / Process Server connected successfully 
+Installation proceeded normally 
+10.4 
+Error 4 — 
+ActiveVOS
+ Login "Insufficient Privileges"
+Problem
+After starting 
+ActiveVOS
+, login failed with:
+You do not have sufficient privileges to login
+Root Cause
+User existed in:
+application-
+users.properties
+but roles were missing in:
+application-
+roles.properties
+Troubleshooting Steps
+Opened:
+jboss-eap-8.1/standalone/configuration/application-roles.properties
+Added roles:
+avadmin
+=
+abAdmin
+Restarted JBoss

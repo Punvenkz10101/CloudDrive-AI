@@ -113,26 +113,35 @@ router.post('/ai', async (req, res) => {
     }
     
     if (type === 'answer') {
-      // Get all files and their OCR content
-      const metadata = readFileMetadata();
-      let allFileNames = Object.keys(metadata);
-      
-      // Also get files from S3
+      // Always enforce reading local metadata keys completely independent of AWS exceptions
+      let allFileNames = [];
+      let metadata = {};
       try {
-        const bucket = process.env.AWS_S3_BUCKET || 'clouddrive-ai-storage';
-        const contents = await listFiles(bucket);
-        const s3FileNames = contents.map(f => f.Key);
-        const allFilesSet = new Set([...allFileNames, ...s3FileNames]);
-        allFileNames = Array.from(allFilesSet);
+        metadata = readFileMetadata();
+        allFileNames = Object.keys(metadata || {});
+      } catch (e) {
+        console.warn('Metadata parsing error:', e);
+      }
+      
+      // Also get files from S3 if configured
+      try {
+        // Only try S3 if we implicitly seem to have keys
+        if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+          const bucket = process.env.AWS_S3_BUCKET || 'clouddrive-ai-storage';
+          const contents = await listFiles(bucket);
+          const s3FileNames = contents.map(f => f.Key);
+          const allFilesSet = new Set([...allFileNames, ...s3FileNames]);
+          allFileNames = Array.from(allFilesSet);
+        }
       } catch (error) {
-        console.log('Could not list S3 files, using metadata only:', error.message);
+        console.log('Could not list S3 files, reverting to local metadata only:', error.message);
       }
       
       if (allFileNames.length === 0) {
         return res.json({
           success: true,
           answer: {
-            answer: "No documents found. Please upload some documents first.",
+            answer: "No documents found. Please upload some documents first to use the AI Search feature.",
             sources: [],
             sourceFiles: []
           },

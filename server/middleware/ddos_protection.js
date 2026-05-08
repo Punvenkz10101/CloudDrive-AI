@@ -1,291 +1,219 @@
 /**
- * DDoS Protection Middleware
- * Implements rate limiting, captcha validation, and blocking based on ML risk scores
+ * Federated DDoS Protection Middleware Entry Point
+ * Routes requests through three independent ML clusters and a majority-vote aggregator.
  */
 
-import { assessUserRisk, logUploadEvent } from '../lib/ddos_service.js';
+import jwt from 'jsonwebtoken';
+import { createFederatedDdosMiddleware, getLatestFederatedDecision, resetFederatedDecisionHistory } from './federated_ddos_middleware.js';
 
-// ... (existing imports and constants)
-// In-memory store for user risk states and rate limits
-// In production, use Redis or similar
+const federatedDdosProtection = createFederatedDdosMiddleware();
+
 const userRiskCache = new Map();
 const rateLimitStore = new Map();
-const blockedUsers = new Set();
-const captchaRequired = new Set();
+const blockedUsers = new Map();
+const simulatorBurstTracker = new Map();
+const USER_BLOCK_DURATION_MS = Number(process.env.USER_BLOCK_DURATION_MS || 10 * 60 * 1000);
 
-// Cache TTL (milliseconds)
-const RISK_CACHE_TTL = 60000; // 1 minute
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
+let globalZeroTrustMode = false;
+let lastZeroTrustCheck = Date.now();
+const THREAT_CHECK_INTERVAL = 10 * 1000;
 
-// Rate limit thresholds
-const RATE_LIMITS = {
-  NORMAL: { maxRequests: 20, windowMs: 60000 },      // 20 requests per minute
-  SUSPICIOUS: { maxRequests: 5, windowMs: 60000 },    // 5 requests per minute
-  MALICIOUS: { maxRequests: 0, windowMs: 60000 }      // Blocked
-};
-
-/**
- * Get client IP address from request
- */
 function getClientIP(req) {
-  return req.ip || 
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
     req.headers['x-real-ip'] ||
+    req.ip ||
     req.connection?.remoteAddress ||
     '0.0.0.0';
 }
 
-/**
- * Check if user is blocked
- */
-export function isUserBlocked(userId) {
-  return blockedUsers.has(userId);
+function resolveRequestUserId(req) {
+  const headerUserId = req.headers['x-user-id'];
+  if (headerUserId) return String(headerUserId);
+
+  const authUser = req.user?.userId || req.user?.id || req.user?.sub || req.user?.email;
+  if (authUser) return String(authUser);
+
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (token) {
+    try {
+      const secret = process.env.JWT_SECRET || 'dev_secret_change_me';
+      const payload = jwt.verify(token, secret);
+      const tokenUser = payload?.userId || payload?.id || payload?.sub || payload?.email;
+      if (tokenUser) return String(tokenUser);
+    } catch {
+      // Downstream auth middleware will enforce invalid tokens.
+    }
+  }
+
+  return `ip_${getClientIP(req)}`;
 }
 
-/**
- * Check if user requires captcha
- */
-export function requiresCaptcha(userId) {
-  return captchaRequired.has(userId);
+function isPublicAuthRoute(req) {
+  const routePath = String(req.originalUrl || req.baseUrl || req.path || '').toLowerCase();
+  return routePath === '/api/auth/login' || routePath === '/api/auth/signup';
 }
 
-/**
- * Check rate limit for user
- */
-function checkRateLimit(userId, riskLevel) {
+function updateZeroTrustMode() {
   const now = Date.now();
-  const limit = RATE_LIMITS[riskLevel] || RATE_LIMITS.NORMAL;
+  if (now - lastZeroTrustCheck < THREAT_CHECK_INTERVAL) return;
+  lastZeroTrustCheck = now;
 
-  if (!rateLimitStore.has(userId)) {
-    rateLimitStore.set(userId, {
-      requests: [],
-      riskLevel
-    });
+  let highRiskUsers = 0;
+  for (const risk of userRiskCache.values()) {
+    if (now - risk.timestamp < 60 * 1000) {
+      if (risk.risk_level === 'MALICIOUS' || risk.risk_level === 'SUSPICIOUS' || risk.anomaly_score > 0.4) {
+        highRiskUsers++;
+      }
+    }
   }
 
-  const userLimit = rateLimitStore.get(userId);
-  
-  // Clean old requests outside window
-  userLimit.requests = userLimit.requests.filter(
-    timestamp => now - timestamp < limit.windowMs
-  );
-
-  // Update risk level if changed
-  if (userLimit.riskLevel !== riskLevel) {
-    userLimit.riskLevel = riskLevel;
-    // Reset requests when risk level changes
-    userLimit.requests = [];
+  if (highRiskUsers >= 1) {
+    if (!globalZeroTrustMode) {
+      console.warn('[DDoS] SECURITY BREACH DETECTED: Activating GLOBAL ZERO TRUST MODE.');
+    }
+    globalZeroTrustMode = true;
+    lastZeroTrustCheck = now;
+    return;
   }
 
-  // Check if limit exceeded
-  if (userLimit.requests.length >= limit.maxRequests) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetAt: userLimit.requests[0] + limit.windowMs
-    };
-  }
-
-  // Add current request
-  userLimit.requests.push(now);
-
-  return {
-    allowed: true,
-    remaining: limit.maxRequests - userLimit.requests.length,
-    resetAt: now + limit.windowMs
-  };
-}
-
-/**
- * Main DDoS protection middleware
- */
-export async function ddosProtection(req, res, next) {
-  try {
-    // Get user ID from auth token or use IP as fallback
-    const userId = req.user?.userId || req.user?.id || `ip_${getClientIP(req)}`;
-    const ipAddress = getClientIP(req);
-
-    // Check if user is blocked
-    if (isUserBlocked(userId)) {
-      // Log the blocked attempt
-      await logUploadEvent({
-        timestamp: new Date().toISOString(),
-        user_id: userId,
-        ip_address: ipAddress,
-        file_hash: '',
-        file_size: 0,
-        filename: 'blocked_request',
-        success: 0,
-        error: 'User Blocked'
-      });
-
-      return res.status(403).json({
-        error: 'Account temporarily blocked due to suspicious activity',
-        code: 'USER_BLOCKED',
-        retryAfter: 'Please contact support or try again later'
-      });
-    }
-
-    // Get cached risk or assess new risk
-    let riskData = userRiskCache.get(userId);
-    const now = Date.now();
-
-    if (!riskData || (now - riskData.timestamp > RISK_CACHE_TTL)) {
-      // Assess risk (async, but we wait for it)
-      riskData = await assessUserRisk(userId, ipAddress);
-      riskData.timestamp = now;
-      userRiskCache.set(userId, riskData);
-    }
-
-    const { risk_level, action, anomaly_score } = riskData;
-
-    // Update user status based on risk
-    if (risk_level === 'MALICIOUS') {
-      blockedUsers.add(userId);
-      
-      // Log the malicious block
-      await logUploadEvent({
-        timestamp: new Date().toISOString(),
-        user_id: userId,
-        ip_address: ipAddress,
-        file_hash: '',
-        file_size: 0,
-        filename: 'malicious_block',
-        success: 0,
-        error: 'Malicious Risk Level'
-      });
-
-      return res.status(403).json({
-        error: 'Request blocked by security system',
-        code: 'MALICIOUS_DETECTED',
-        anomaly_score: anomaly_score.toFixed(3)
-      });
-    }
-
-    if (risk_level === 'SUSPICIOUS' || action === 'CAPTCHA') {
-      captchaRequired.add(userId);
-    }
-
-    // Check rate limit
-    const rateLimit = checkRateLimit(userId, risk_level);
-    if (!rateLimit.allowed) {
-      // Log rate limit block
-      await logUploadEvent({
-        timestamp: new Date().toISOString(),
-        user_id: userId,
-        ip_address: ipAddress,
-        file_hash: '',
-        file_size: 0,
-        filename: 'rate_limit_block',
-        success: 0,
-        error: 'Rate Limit Exceeded'
-      });
-
-      const resetIn = Math.ceil((rateLimit.resetAt - now) / 1000);
-      return res.status(429).json({
-        error: 'Rate limit exceeded',
-        code: 'RATE_LIMIT_EXCEEDED',
-        retryAfter: resetIn,
-        headers: {
-          'X-RateLimit-Limit': RATE_LIMITS[risk_level]?.maxRequests || 20,
-          'X-RateLimit-Remaining': 0,
-          'X-RateLimit-Reset': new Date(rateLimit.resetAt).toISOString()
-        }
-      });
-    }
-
-    // Add rate limit headers
-    res.set({
-      'X-RateLimit-Limit': RATE_LIMITS[risk_level]?.maxRequests || 20,
-      'X-RateLimit-Remaining': rateLimit.remaining,
-      'X-RateLimit-Reset': new Date(rateLimit.resetAt).toISOString(),
-      'X-Risk-Level': risk_level,
-      'X-Anomaly-Score': anomaly_score?.toFixed(3) || '0.000'
-    });
-
-    // Attach risk data to request for use in routes
-    req.ddosRisk = {
-      risk_level,
-      anomaly_score,
-      action,
-      requiresCaptcha: requiresCaptcha(userId)
-    };
-
-    next();
-  } catch (err) {
-    console.error('[DDoS] Protection middleware error:', err);
-    // On error, allow request but log it
-    req.ddosRisk = {
-      risk_level: 'NORMAL',
-      anomaly_score: 0,
-      action: 'ALLOW',
-      requiresCaptcha: false,
-      error: err.message
-    };
-    next();
+  if (globalZeroTrustMode && now - lastZeroTrustCheck > 60 * 1000) {
+    console.log('[DDoS] Threat Level Normal. Deactivating Global Zero Trust.');
+    globalZeroTrustMode = false;
   }
 }
 
-/**
- * Captcha verification middleware
- */
-export function requireCaptchaVerification(req, res, next) {
-  const userId = req.user?.userId || req.user?.id || `ip_${getClientIP(req)}`;
-  
-  if (requiresCaptcha(userId)) {
-    const captchaToken = req.headers['x-captcha-token'] || req.body?.captchaToken;
-    
-    if (!captchaToken) {
-      return res.status(403).json({
-        error: 'Captcha verification required',
-        code: 'CAPTCHA_REQUIRED',
-        requiresCaptcha: true
-      });
-    }
-
-    // TODO: Verify captcha token with captcha service
-    // For now, any token is accepted (implement proper verification)
-    if (!captchaToken || captchaToken === 'invalid') {
-      return res.status(403).json({
-        error: 'Invalid captcha token',
-        code: 'CAPTCHA_INVALID'
-      });
-    }
-
-    // Captcha passed, remove from required list temporarily
-    captchaRequired.delete(userId);
-  }
-
-  next();
-}
-
-/**
- * Cleanup old cache entries (run periodically)
- */
-export function cleanupCache() {
+function cleanupCache() {
   const now = Date.now();
-  
-  // Clean risk cache
+
   for (const [userId, data] of userRiskCache.entries()) {
-    if (now - data.timestamp > RISK_CACHE_TTL * 10) {
+    if (now - data.timestamp > 10 * 60 * 1000) {
       userRiskCache.delete(userId);
     }
   }
 
-  // Clean rate limit store
   for (const [userId, data] of rateLimitStore.entries()) {
-    // Remove entries older than 1 hour
-    const hasRecentRequests = data.requests.some(
-      timestamp => now - timestamp < 3600000
-    );
+    const hasRecentRequests = Array.isArray(data.requests) && data.requests.some((timestamp) => now - timestamp < 60 * 60 * 1000);
     if (!hasRecentRequests) {
       rateLimitStore.delete(userId);
     }
   }
+
+  // Drop expired temporary user blocks so users can recover automatically.
+  for (const [userId, blockData] of blockedUsers.entries()) {
+    if (!blockData || now >= blockData.blockedUntil) {
+      blockedUsers.delete(userId);
+    }
+  }
 }
 
-// Run cleanup every 5 minutes
 setInterval(cleanupCache, 5 * 60 * 1000);
+
+export function getZeroTrustMode() {
+  return globalZeroTrustMode;
+}
+
+export function resetSecurityState() {
+  userRiskCache.clear();
+  rateLimitStore.clear();
+  blockedUsers.clear();
+  simulatorBurstTracker.clear();
+  resetFederatedDecisionHistory();
+  globalZeroTrustMode = false;
+  lastZeroTrustCheck = Date.now();
+  console.log('[DDoS] Federated security state has been reset by Administrator.');
+}
+
+export function setBotScore(userId, score) {
+  const riskData = userRiskCache.get(userId) || { timestamp: Date.now() };
+  riskData.bot_score = score;
+  userRiskCache.set(userId, riskData);
+}
+
+export function recordSimulatedRisk(userId, riskData) {
+  userRiskCache.set(userId, {
+    ...riskData,
+    timestamp: Date.now()
+  });
+  updateZeroTrustMode();
+}
+
+export function isUserBlocked(userId) {
+  const blockData = blockedUsers.get(userId);
+  if (!blockData) return false;
+
+  if (Date.now() >= blockData.blockedUntil) {
+    blockedUsers.delete(userId);
+    return false;
+  }
+
+  return true;
+}
+
+function getBlockRemainingSeconds(userId) {
+  const blockData = blockedUsers.get(userId);
+  if (!blockData) return 0;
+  return Math.max(1, Math.ceil((blockData.blockedUntil - Date.now()) / 1000));
+}
+
+export function getFederatedDdosState() {
+  // Ensure expired blocks are cleaned before reporting dashboard state.
+  const now = Date.now();
+  for (const [userId, blockData] of blockedUsers.entries()) {
+    if (!blockData || now >= blockData.blockedUntil) {
+      blockedUsers.delete(userId);
+    }
+  }
+
+  return {
+    userRiskCacheSize: userRiskCache.size,
+    rateLimitStoreSize: rateLimitStore.size,
+    blockedUsersSize: blockedUsers.size,
+    simulatorBurstSize: simulatorBurstTracker.size,
+    zeroTrustMode: globalZeroTrustMode
+  };
+}
+
+export function getFederatedDecisionSnapshot() {
+  return getLatestFederatedDecision();
+}
+
+export async function ddosProtection(req, res, next) {
+  const userId = resolveRequestUserId(req);
+
+  // Keep login/signup reachable even if the current IP/user has been flagged.
+  // The rest of the application remains protected by the federated gate.
+  if (isPublicAuthRoute(req)) {
+    return next();
+  }
+
+  if (isUserBlocked(userId)) {
+    return res.status(403).json({
+      error: 'Account temporarily blocked due to suspicious activity',
+      code: 'USER_BLOCKED',
+      retryAfter: getBlockRemainingSeconds(userId)
+    });
+  }
+
+  const result = await federatedDdosProtection(req, res, next);
+
+  if (req.ddosFederatedDecision?.shouldBlock || res.statusCode === 403) {
+    blockedUsers.set(userId, {
+      blockedAt: Date.now(),
+      blockedUntil: Date.now() + USER_BLOCK_DURATION_MS
+    });
+    if (req.ddosRisk) {
+      userRiskCache.set(userId, {
+        ...req.ddosRisk,
+        timestamp: Date.now()
+      });
+      updateZeroTrustMode();
+    }
+  }
+
+  return result;
+}
+
 
 
 

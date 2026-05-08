@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import crypto from 'crypto';
+import { UploadLog } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,26 +57,53 @@ export async function logUploadEvent(event) {
     error = null
   } = event;
 
+  console.log(`[DDoS-Event] Recording ${success === 1 ? 'SUCCESS' : 'BLOCK'} for ${user_id} (${ip_address}) - Reason: ${error || 'None'}`);
+
   const csvRow = [
     timestamp || new Date().toISOString(),
-    user_id || 'unknown',
-    ip_address || '0.0.0.0',
-    file_hash || '',
-    file_size || 0,
-    filename || 'unknown',
-    upload_duration_ms,
-    success,
-    error || ''
+    `"${(user_id || 'unknown').toString().replace(/"/g, '""')}"`,
+    `"${(ip_address || '0.0.0.0').toString().replace(/"/g, '""')}"`,
+    `"${(file_hash || '').toString().replace(/"/g, '""')}"`,
+    `"${(file_size || 0).toString()}"`,
+    `"${(filename || 'unknown').toString().replace(/"/g, '""')}"`,
+    `"${(upload_duration_ms || 0).toString()}"`,
+    `"${(success || 0).toString()}"`,
+    `"${(error || '').toString().replace(/"/g, '""')}"`
   ].join(',') + '\n';
+
+  console.log(`[DDoS System] Appending to CSV: ${UPLOAD_LOGS_FILE}`);
+  console.log(`[DDoS System] Content: ${csvRow.trim()}`);
 
   try {
     fs.appendFileSync(UPLOAD_LOGS_FILE, csvRow);
+    
+    // Also log to MongoDB
+    try {
+      const logEntry = new UploadLog({
+        timestamp: timestamp ? new Date(timestamp) : new Date(),
+        userId: user_id || 'unknown',
+        ipAddress: ip_address || '0.0.0.0',
+        fileHash: file_hash || '',
+        fileSize: file_size || 0,
+        filename: filename || 'unknown',
+        uploadDurationMs: upload_duration_ms,
+        success: success,
+        error: error || ''
+      });
+      await logEntry.save();
+    } catch (dbErr) {
+      console.error('[DDoS DB] MongoDB log failed:', dbErr.message);
+    }
+
     return true;
   } catch (err) {
     console.error('[DDoS] Failed to log upload event:', err);
     return false;
   }
 }
+
+const RISK_CACHE_TTL = 60000; // 1 minute
+let hasWarnedPythonError = false;
 
 /**
  * Extract features for a single user from recent upload logs
@@ -95,7 +123,11 @@ export async function extractUserFeatures(userId, timeWindowMinutes = 60) {
 
     const userLogs = [];
     for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',');
+      const row = lines[i].trim();
+      if (!row) continue;
+      
+      // Robust CSV parsing to handle quoted values (same as in ddos.js)
+      const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
       if (cols.length < 9) continue;
 
       const logTime = new Date(cols[0]);
@@ -116,24 +148,26 @@ export async function extractUserFeatures(userId, timeWindowMinutes = 60) {
       }
     }
 
-    if (userLogs.length === 0) {
+    // Filter out invalid logs and sort by timestamp
+    const validUserLogs = userLogs.filter(log => !isNaN(log.timestamp.getTime()));
+    validUserLogs.sort((a, b) => a.timestamp - b.timestamp);
+
+    if (validUserLogs.length === 0) {
       return getDefaultFeatures(userId);
     }
-
-    // Sort by timestamp
-    userLogs.sort((a, b) => a.timestamp - b.timestamp);
+    const filteredUserLogs = validUserLogs;
 
     // Calculate features
-    const successfulLogs = userLogs.filter(log => log.success === 1);
-    const totalUploads = userLogs.length;
+    const successfulLogs = filteredUserLogs.filter(log => log.success === 1);
+    const totalUploads = filteredUserLogs.length;
     const successfulUploads = successfulLogs.length;
 
     // 1. Uploads per time window (5-minute rolling window)
     let maxUploadsPerWindow = 0;
-    for (let i = 0; i < userLogs.length; i++) {
-      const windowEnd = new Date(userLogs[i].timestamp.getTime() + 5 * 60 * 1000);
-      const uploadsInWindow = userLogs.filter(log => 
-        log.timestamp >= userLogs[i].timestamp && log.timestamp <= windowEnd
+    for (let i = 0; i < filteredUserLogs.length; i++) {
+      const windowEnd = new Date(filteredUserLogs[i].timestamp.getTime() + 5 * 60 * 1000);
+      const uploadsInWindow = filteredUserLogs.filter(log => 
+        log.timestamp >= filteredUserLogs[i].timestamp && log.timestamp <= windowEnd
       ).length;
       maxUploadsPerWindow = Math.max(maxUploadsPerWindow, uploadsInWindow);
     }
@@ -162,10 +196,10 @@ export async function extractUserFeatures(userId, timeWindowMinutes = 60) {
 
     // 6. Time between uploads (average seconds)
     let avgTimeBetween = 0;
-    if (userLogs.length > 1) {
+    if (filteredUserLogs.length > 1) {
       const timeDiffs = [];
-      for (let i = 1; i < userLogs.length; i++) {
-        const diff = (userLogs[i].timestamp - userLogs[i-1].timestamp) / 1000; // seconds
+      for (let i = 1; i < filteredUserLogs.length; i++) {
+        const diff = (filteredUserLogs[i].timestamp - filteredUserLogs[i-1].timestamp) / 1000; // seconds
         timeDiffs.push(diff);
       }
       avgTimeBetween = timeDiffs.reduce((sum, d) => sum + d, 0) / timeDiffs.length;
@@ -178,7 +212,7 @@ export async function extractUserFeatures(userId, timeWindowMinutes = 60) {
     const totalBytes = successfulLogs.reduce((sum, log) => sum + log.file_size, 0);
 
     // 9. IP diversity
-    const uniqueIPs = new Set(userLogs.map(log => log.ip_address));
+    const uniqueIPs = new Set(filteredUserLogs.map(log => log.ip_address));
     const ipDiversity = uniqueIPs.size;
 
     // 10. Unique file hashes
@@ -230,14 +264,12 @@ export async function predictUserRisk(userFeatures) {
     const scalerFile = path.join(MODEL_DIR, 'scaler.pkl');
 
     if (!fs.existsSync(modelFile) || !fs.existsSync(scalerFile)) {
-      console.warn('[DDoS] Model files not found. Returning default safe response.');
+      console.warn('[DDoS] Model files not found. Using HEURISTIC fallback scoring.');
+      const heuristicResult = calculateHeuristicRisk(userFeatures);
       resolve({
         status: 'success',
-        anomaly_score: 0.0,
-        risk_level: 'NORMAL',
-        is_anomaly: 0,
-        action: 'ALLOW',
-        message: 'Model not trained yet'
+        ...heuristicResult,
+        message: 'Using heuristic fallback (model not ready)'
       });
       return;
     }
@@ -319,72 +351,128 @@ print(json.dumps(result))
     });
 
     child.on('close', (code) => {
-      // Cleanup temp files
       try {
-        if (fs.existsSync(tempFeaturesFile)) fs.unlinkSync(tempFeaturesFile);
-        if (fs.existsSync(pythonScript)) fs.unlinkSync(pythonScript);
-      } catch (e) {
-        // Ignore cleanup errors
-      }
+        // Cleanup temp files
+        try {
+          if (fs.existsSync(tempFeaturesFile)) fs.unlinkSync(tempFeaturesFile);
+          if (fs.existsSync(pythonScript)) fs.unlinkSync(pythonScript);
+        } catch (e) {
+          // Ignore cleanup errors
+        }
 
-      if (code !== 0) {
-        // If it's a module import error, provide helpful message
-        if (stderr.includes('ModuleNotFoundError') || stderr.includes('No module named')) {
-          console.warn('[DDoS] Python module import error. Model may not be trained or venv not activated.');
-          console.warn('[DDoS] Run: cd ddos_system/Application_Layer_DDOS && .\\train_ddos_model.ps1');
-          // Return safe default instead of failing
+        if (code !== 0) {
+          // If it's a module import error, provide helpful message
+          if (stderr.includes('ModuleNotFoundError') || stderr.includes('No module named')) {
+            if (!hasWarnedPythonError) {
+              console.warn('[DDoS] Python module import error. Using HEURISTIC fallback.');
+              hasWarnedPythonError = true;
+            }
+            const heuristicResult = calculateHeuristicRisk(userFeatures);
+            resolve({
+              status: 'success',
+              ...heuristicResult,
+              message: 'Using heuristic fallback (python error)'
+            });
+            return;
+          }
+          console.error('[DDoS] Python prediction error:', stderr);
+          const heuristicResult = calculateHeuristicRisk(userFeatures);
           resolve({
             status: 'success',
-            anomaly_score: 0.0,
-            risk_level: 'NORMAL',
-            is_anomaly: 0,
-            action: 'ALLOW',
-            message: 'Python modules not available. Please train the model first.'
+            ...heuristicResult,
+            message: 'Using heuristic fallback (prediction error)'
           });
           return;
         }
-        console.error('[DDoS] Python prediction error:', stderr);
-        // Still return safe default to avoid breaking uploads
+
+        try {
+          const result = JSON.parse(stdout.trim());
+        
+          console.log(`[DDoS Debug] Python Prediction:`, result);
+        
+          // Determine action based on risk level
+          let action = 'ALLOW';
+          if (result.risk_level === 'MALICIOUS') {
+            action = 'BLOCK';
+          } else if (result.risk_level === 'SUSPICIOUS') {
+            action = 'RATE_LIMIT';
+          }
+
+          // Add rate limiting suggestion for suspicious users
+          if (result.anomaly_score > 0.7 && result.anomaly_score < 0.85) {
+            action = 'RATE_LIMIT';
+          }
+
+          resolve({
+            ...result,
+            action
+          });
+        } catch (err) {
+          console.error('[DDoS] Failed to parse prediction result:', err.message);
+          const heuristicResult = calculateHeuristicRisk(userFeatures);
+          resolve({
+            status: 'success',
+            ...heuristicResult,
+            message: 'Using heuristic fallback (parse error)'
+          });
+        }
+      } catch (err) {
+        console.error('[DDoS] Prediction pipeline failed:', err.message);
+        const heuristicResult = calculateHeuristicRisk(userFeatures);
         resolve({
           status: 'success',
-          anomaly_score: 0.0,
-          risk_level: 'NORMAL',
-          is_anomaly: 0,
-          action: 'ALLOW',
-          message: 'Prediction error, using safe defaults'
+          ...heuristicResult,
+          message: 'Using heuristic fallback (pipeline error)'
         });
-        return;
-      }
-
-      try {
-        const result = JSON.parse(stdout.trim());
-        
-        // Determine action based on risk level
-        let action = 'ALLOW';
-        if (result.risk_level === 'MALICIOUS') {
-          action = 'BLOCK';
-        } else if (result.risk_level === 'SUSPICIOUS') {
-          action = 'CAPTCHA';
-        }
-
-        // Add rate limiting suggestion for suspicious users
-        if (result.anomaly_score > 0.7 && result.anomaly_score < 0.85) {
-          action = 'RATE_LIMIT';
-        }
-
-        resolve({
-          ...result,
-          action
-        });
-      } catch (err) {
-        reject(new Error(`Failed to parse prediction result: ${err.message}`));
       }
     });
 
     child.on('error', (err) => {
-      reject(new Error(`Failed to spawn Python process: ${err.message}`));
+      console.error('[DDoS] Failed to spawn Python process:', err.message);
+      const heuristicResult = calculateHeuristicRisk(userFeatures);
+      resolve({
+        status: 'success',
+        ...heuristicResult,
+        message: 'Using heuristic fallback (spawn error)'
+      });
     });
   });
+}
+
+/**
+ * Heuristic risk calculation fallback (Node.js implementation)
+ */
+function calculateHeuristicRisk(features) {
+  let score = 0.1; // Base score
+  
+  // Rapid uploads in a short window - bots send bursts
+  if (features.uploads_per_time_window >= 8) score += 0.65;      // Near-instant MALICIOUS
+  else if (features.uploads_per_time_window >= 5) score += 0.45; // Suspicious → RATE_LIMIT
+  else if (features.uploads_per_time_window >= 3) score += 0.25; // Early warning
+  
+  // Duplicate file ratio - botnet floods same payload
+  if (features.duplicate_file_ratio > 0.5) score += 0.45;        // INSTANTLY suspicious
+  else if (features.duplicate_file_ratio > 0.3) score += 0.25;   // Warning flag
+  
+  // High failure rate = blocked attempts still trying
+  if (features.upload_failure_rate > 0.5) score += 0.2;
+  
+  // Very fast uploads (< 3 seconds between) = automated traffic
+  if (features.time_between_uploads_sec > 0 && features.time_between_uploads_sec < 3) score += 0.35;
+  else if (features.time_between_uploads_sec >= 3 && features.time_between_uploads_sec < 8) score += 0.15;
+  
+  score = Math.min(0.95, score);
+  
+  let risk_level = 'NORMAL';
+  if (score >= 0.7) risk_level = 'MALICIOUS';
+  else if (score >= 0.4) risk_level = 'SUSPICIOUS';
+  
+  return {
+    anomaly_score: score,
+    risk_level,
+    is_anomaly: score > 0.4 ? 1 : 0,
+    action: score >= 0.7 ? 'BLOCK' : (score >= 0.4 ? 'RATE_LIMIT' : 'ALLOW')
+  };
 }
 
 /**
@@ -396,7 +484,8 @@ export async function assessUserRisk(userId, ipAddress) {
     const features = await extractUserFeatures(userId);
     
     // Predict risk
-    const prediction = await predictUserRisk(features);
+      console.log(`[DDoS Debug] Extracted Features for ${userId}:`, features);
+      const prediction = await predictUserRisk(features);
     
     return {
       ...prediction,

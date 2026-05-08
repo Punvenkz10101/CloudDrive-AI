@@ -11,12 +11,98 @@ import { toast } from '@/components/ui/use-toast';
 
 type FileRow = { id: string; name: string; size: number; uploadDate: string; status: string; downloadUrl: string };
 
+const AIAssistantCard = () => {
+  const [aiQuery, setAiQuery] = useState('');
+  const [showChat, setShowChat] = useState(false);
+
+  const handleAskAI = () => {
+    if (!aiQuery.trim()) {
+      setShowChat(true);
+      return;
+    }
+    // Always show chat when asking a question
+    setShowChat(true);
+    // Auto-send the AI query to chat
+    setTimeout(() => {
+      const event = new CustomEvent('auto-ask', { detail: aiQuery });
+      window.dispatchEvent(event);
+      setAiQuery('');
+    }, 300);
+  };
+
+  return (
+    <Card className="border-emerald-brand/20 shadow-lg">
+      <CardHeader className="bg-gradient-to-r from-emerald-brand/10 to-emerald-brand/5 border-b border-emerald-brand/20">
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-brand/20 rounded-lg">
+              <Brain className="h-5 w-5 text-emerald-brand" />
+            </div>
+            <div>
+              <div className="text-charcoal">AI Assistant</div>
+              <p className="text-sm font-normal text-charcoal/60 mt-0.5">
+                Ask questions about your files using natural language
+              </p>
+            </div>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShowChat(!showChat)}
+            className="text-emerald-brand hover:text-emerald-brand/80 hover:bg-emerald-brand/10"
+          >
+            <MessageCircle className="h-4 w-4 mr-2" />
+            {showChat ? 'Hide Chat' : 'Show Chat'}
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {showChat ? (
+          <div className="border-t border-emerald-brand/10">
+            <ChatInterface onClose={() => setShowChat(false)} hideHeader={true} />
+          </div>
+        ) : (
+          <div className="p-6">
+            <div className="relative mb-4">
+              <Brain className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-emerald-brand/60" />
+              <input
+                type="text"
+                placeholder="Ask anything about your files (e.g., 'What is my SRN?', 'What is my Aadhar number?')..."
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAskAI();
+                  }
+                }}
+                className="w-full pl-11 pr-4 py-3.5 border-2 border-emerald-brand/20 rounded-xl bg-white text-charcoal placeholder:text-charcoal/50 focus:outline-none focus:ring-2 focus:ring-emerald-brand/50 focus:border-emerald-brand transition-all shadow-sm"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-charcoal/60">
+                💡 Type your question and press Enter, or click "Ask AI"
+              </p>
+              <Button 
+                variant="hero" 
+                onClick={handleAskAI}
+                className="bg-emerald-brand hover:bg-emerald-brand/90 text-white shadow-md hover:shadow-lg transition-all"
+              >
+                <Brain className="h-4 w-4 mr-2" />
+                Ask AI
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 const Files = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [files, setFiles] = useState<FileRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showChat, setShowChat] = useState(false);
 
   const loadFiles = async () => {
     setLoading(true);
@@ -80,23 +166,6 @@ const Files = () => {
       return nameMatch || dateMatch || wordMatch;
     });
   }, [searchQuery, files]);
-
-  const [aiQuery, setAiQuery] = useState('');
-
-  const handleAskAI = () => {
-    if (!aiQuery.trim()) {
-      setShowChat(true);
-      return;
-    }
-    // Always show chat when asking a question
-    setShowChat(true);
-    // Auto-send the AI query to chat
-    setTimeout(() => {
-      const event = new CustomEvent('auto-ask', { detail: aiQuery });
-      window.dispatchEvent(event);
-      setAiQuery('');
-    }, 300);
-  };
 
   const handleDelete = async (fileId: string, fileName: string) => {
     if (!confirm(`Are you sure you want to delete "${fileName}"? This action cannot be undone.`)) return;
@@ -202,70 +271,7 @@ const Files = () => {
             </Card>
 
             {/* AI Assistant - Ask questions about files */}
-            <Card className="border-emerald-brand/20 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-emerald-brand/10 to-emerald-brand/5 border-b border-emerald-brand/20">
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-brand/20 rounded-lg">
-                      <Brain className="h-5 w-5 text-emerald-brand" />
-                    </div>
-                    <div>
-                      <div className="text-charcoal">AI Assistant</div>
-                      <p className="text-sm font-normal text-charcoal/60 mt-0.5">
-                        Ask questions about your files using natural language
-                      </p>
-                    </div>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setShowChat(!showChat)}
-                    className="text-emerald-brand hover:text-emerald-brand/80 hover:bg-emerald-brand/10"
-                  >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    {showChat ? 'Hide Chat' : 'Show Chat'}
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                {showChat ? (
-                  <div className="border-t border-emerald-brand/10">
-                    <ChatInterface onClose={() => setShowChat(false)} hideHeader={true} />
-                  </div>
-                ) : (
-                  <div className="p-6">
-                    <div className="relative mb-4">
-                      <Brain className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-emerald-brand/60" />
-                      <input
-                        type="text"
-                        placeholder="Ask anything about your files (e.g., 'What is my SRN?', 'What is my Aadhar number?')..."
-                        value={aiQuery}
-                        onChange={(e) => setAiQuery(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            handleAskAI();
-                          }
-                        }}
-                        className="w-full pl-11 pr-4 py-3.5 border-2 border-emerald-brand/20 rounded-xl bg-white text-charcoal placeholder:text-charcoal/50 focus:outline-none focus:ring-2 focus:ring-emerald-brand/50 focus:border-emerald-brand transition-all shadow-sm"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-charcoal/60">
-                        💡 Type your question and press Enter, or click "Ask AI"
-                      </p>
-                      <Button 
-                        variant="hero" 
-                        onClick={handleAskAI}
-                        className="bg-emerald-brand hover:bg-emerald-brand/90 text-white shadow-md hover:shadow-lg transition-all"
-                      >
-                        <Brain className="h-4 w-4 mr-2" />
-                        Ask AI
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <AIAssistantCard />
           </div>
 
           <Card className="border-emerald-brand/20 shadow-lg">

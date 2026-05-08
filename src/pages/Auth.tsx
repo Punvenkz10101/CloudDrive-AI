@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Cloud, Mail, Lock, ArrowLeft } from 'lucide-react';
@@ -13,6 +13,8 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
 
   const handleSubmit = async () => {
     setError(null);
@@ -33,12 +35,18 @@ const Auth = () => {
       });
       if (res && res.token) {
         setAuthToken(res.token);
-        navigate('/dashboard');
+        navigate(redirectTo);
       } else {
         setError('Unexpected response from server');
       }
     } catch (e: any) {
-      setError(e.message || 'Authentication failed');
+      // Try to parse error if it's JSON from server
+      try {
+        const errorData = JSON.parse(e.message);
+        setError(errorData.error || errorData.message || 'Authentication failed');
+      } catch (parseError) {
+        setError(e.message || 'Authentication failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -137,12 +145,17 @@ const Auth = () => {
                   </div>
                 </div>
               )}
-
               {/* Submit Button */}
               {error && (
                 <div className="text-sm text-red-600 mb-2">{error}</div>
               )}
-              <Button variant="hero" className="w-full" size="lg" disabled={loading} onClick={handleSubmit}>
+              <Button 
+                variant="hero" 
+                className="w-full" 
+                size="lg" 
+                disabled={loading} 
+                onClick={handleSubmit}
+              >
                 {loading ? 'Please wait…' : (isSignIn ? 'Sign In' : 'Create Account')}
               </Button>
 

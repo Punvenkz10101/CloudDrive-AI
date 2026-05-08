@@ -66,9 +66,12 @@ const Dashboard = () => {
       ]);
 
       // Build recent activity from files
-      const files = filesData.files || [];
-      if (files.length > 0) {
-        const activities = files.slice(0, 5).map((file, idx) => ({
+      const files = Array.isArray(filesData.files) ? filesData.files : [];
+      // Sort by uploadDate descending
+      const sortedFiles = [...files].sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+      
+      if (sortedFiles.length > 0) {
+        const activities = sortedFiles.slice(0, 5).map((file, idx) => ({
           id: idx + 1,
           type: 'upload',
           title: 'Document uploaded',

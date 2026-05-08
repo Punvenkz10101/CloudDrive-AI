@@ -23,27 +23,29 @@ function Show-Banner {
 function Show-Menu {
     Write-Host "  Backend URL: $BackendUrl" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "  ATTACK TYPES:" -ForegroundColor Yellow
+    Write-Host "  ATTACK SCENARIOS:" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "    [1] Rapid Fire Attack" -ForegroundColor Red
-    Write-Host "        High-frequency requests" -ForegroundColor Gray
+    Write-Host "    [1] Rapid Duplicate File Attack" -ForegroundColor Red
+    Write-Host "        Same actor sends rapid duplicate payloads." -ForegroundColor Gray
     Write-Host ""
-    Write-Host "    [2] Duplicate File Spam" -ForegroundColor Yellow
-    Write-Host "        Same file repeatedly" -ForegroundColor Gray
+    Write-Host "    [2] Multiple-Bot Same-IP Upload Attack" -ForegroundColor Red
+    Write-Host "        Many bot IDs attack from one shared IP." -ForegroundColor Gray
     Write-Host ""
-    Write-Host "    [3] Massive File Flooding" -ForegroundColor Yellow
-    Write-Host "        Large files" -ForegroundColor Gray
+    Write-Host "    [3] Combined Attack (Both Vectors)" -ForegroundColor Red
+    Write-Host "        Runs duplicate flood + same-IP bot swarm." -ForegroundColor Gray
     Write-Host ""
-    Write-Host "    [4] Combined Attack" -ForegroundColor Red
-    Write-Host "        All patterns together" -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "  OTHER OPTIONS:" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "    [5] View DDoS Dashboard" -ForegroundColor Cyan
-    Write-Host "    [6] Check Server Status" -ForegroundColor Cyan
-    Write-Host "    [7] Configure Settings" -ForegroundColor Cyan
+    Write-Host "  OTHER ACTIONS:" -ForegroundColor Cyan
+    Write-Host "    [4] View DDoS Dashboard (SOC Portal)" -ForegroundColor Cyan
+    Write-Host "    [5] Check Server Status" -ForegroundColor Cyan
+    Write-Host "    [6] Configure Backend Settings" -ForegroundColor Cyan
     Write-Host "    [0] Exit" -ForegroundColor White
     Write-Host ""
+    Write-Host "  ===========================================" -ForegroundColor DarkGray
+    Write-Host "  REMOTE TESTING TIP:" -ForegroundColor Yellow
+    Write-Host "  To run from another laptop, find this system's" -ForegroundColor Gray
+    Write-Host "  IP (e.g. 192.168.1.5) and then on the other" -ForegroundColor Gray
+    Write-Host "  system run this script with:" -ForegroundColor Gray
+    Write-Host "  .\attack_interface.ps1 -BackendUrl http://<IP>:8080" -ForegroundColor Cyan
     Write-Host "  ===========================================" -ForegroundColor DarkGray
     Write-Host ""
 }
@@ -204,7 +206,7 @@ while ($true) {
     switch ($choice) {
         "1" {
             if (Test-ServerStatus) {
-                Start-AttackSimulation -AttackType "rapid" -DisplayName "Rapid Fire Attack"
+                Start-AttackSimulation -AttackType "rapid-duplicate" -DisplayName "Rapid Duplicate File Attack"
             }
             else {
                 Write-Host ""
@@ -214,7 +216,7 @@ while ($true) {
         }
         "2" {
             if (Test-ServerStatus) {
-                Start-AttackSimulation -AttackType "duplicate" -DisplayName "Duplicate File Spam"
+                Start-AttackSimulation -AttackType "bot-same-ip" -DisplayName "Multiple-Bot Same-IP Upload Attack"
             }
             else {
                 Write-Host ""
@@ -224,7 +226,7 @@ while ($true) {
         }
         "3" {
             if (Test-ServerStatus) {
-                Start-AttackSimulation -AttackType "massive" -DisplayName "Massive File Flooding"
+                Start-AttackSimulation -AttackType "combined" -DisplayName "Combined Attack (Both Vectors)"
             }
             else {
                 Write-Host ""
@@ -233,29 +235,50 @@ while ($true) {
             }
         }
         "4" {
-            if (Test-ServerStatus) {
-                Start-CombinedAttack
+            Write-Host ""
+            Write-Host "  [INFO] Detecting frontend port..." -ForegroundColor Yellow
+            
+            # Try common Vite ports in order
+            $vitePorts = @(5173, 8081, 8082, 3000, 5174)
+            $frontendUrl = $null
+            
+            foreach ($port in $vitePorts) {
+                try {
+                    $null = Invoke-WebRequest -Uri "http://localhost:$port" -Method GET -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+                    $frontendUrl = "http://localhost:$port"
+                    Write-Host "  [OK] Frontend found on port $port!" -ForegroundColor Green
+                    break
+                }
+                catch {
+                    # Try next port
+                }
+            }
+            
+            if ($frontendUrl) {
+                Write-Host ""
+                Write-Host "  [INFO] Opening DDoS Dashboard..." -ForegroundColor Cyan
+                Write-Host "  NOTE: You must be logged in to view the dashboard." -ForegroundColor Yellow
+                Write-Host "        Login: $frontendUrl/auth" -ForegroundColor Gray
+                Start-Process "$frontendUrl/admin/ddos"
+                Write-Host "  [OK] Browser opened at $frontendUrl/admin/ddos" -ForegroundColor Green
             }
             else {
-                Write-Host ""
-                Write-Host "  Press any key to continue..." -ForegroundColor Gray
-                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+                Write-Host "  [ERROR] Frontend is NOT running (tried ports: $($vitePorts -join ', '))" -ForegroundColor Red
+                Write-Host "  [!] Please start the dev server first:" -ForegroundColor Yellow
+                Write-Host "      npm run dev" -ForegroundColor White
             }
+            Write-Host ""
+            Write-Host "  Press any key to continue..." -ForegroundColor Gray
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         }
         "5" {
-            Write-Host ""
-            Write-Host "  [INFO] Opening DDoS Dashboard in browser..." -ForegroundColor Cyan
-            Start-Process "http://localhost:5173/ddos"
-            Start-Sleep -Seconds 2
-        }
-        "6" {
             Write-Host ""
             Test-ServerStatus
             Write-Host ""
             Write-Host "  Press any key to continue..." -ForegroundColor Gray
             $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         }
-        "7" {
+        "6" {
             Update-Settings
         }
         "0" {

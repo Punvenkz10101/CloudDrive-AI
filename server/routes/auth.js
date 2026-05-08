@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { ddosProtection } from '../middleware/ddos_protection.js';
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -28,7 +29,7 @@ function signToken(payload) {
   return jwt.sign(payload, secret, { expiresIn: '7d' });
 }
 
-router.post('/signup', async (req, res) => {
+router.post('/signup', ddosProtection, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
 
@@ -44,7 +45,7 @@ router.post('/signup', async (req, res) => {
   res.json({ token, user: { id: user.id, email: user.email } });
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', ddosProtection, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
 

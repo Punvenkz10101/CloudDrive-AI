@@ -1,0 +1,378 @@
+# 
+CloudDrive
+-AI
+## Executive Summary, Architecture, and Module Guide
+Date: March 26, 2026
+Project: 
+CloudDrive
+-AI
+## 1. Executive Summary
+CloudDrive
+-AI is a full-stack secure file platform that combines document storage, OCR-based text extraction, AI-powered document Q and A, and a real-time machine learning DDoS 
+defense
+ layer.
+The project is designed as both:
+- A practical secure cloud-drive application for end users
+- A security engineering showcase with attack simulation, anomaly detection, adaptive 
+defense
+, and threat visualization for administrators
+Core business value:
+- Users can upload files and ask natural language questions about document content
+- OCR converts image and PDF data into searchable text
+- AI chatbot produces grounded answers from user file corpus
+- DDoS system continuously monitors upload 
+behavior
+ and blocks suspicious traffic
+- Admin SOC dashboard provides blocked-event intelligence, analytics, and geo threat map visibility
+## 2. System Objectives
+1. Provide secure document upload, storage, retrieval, and deletion
+2. Automatically process documents with OCR for content understanding
+3. Enable AI-driven semantic question answering over uploaded files
+4. Detect and mitigate upload-based DDoS and bot-like 
+behavior
+ in real time
+5. Provide operator-level security observability and controls
+## 3. High-Level Architecture
+The system has three major planes:
+- Presentation Plane: React frontend and user/admin interfaces
+- Service Plane: Node.js and Express APIs for auth, files, OCR orchestration, search, and 
+defense
+ endpoints
+- Intelligence Plane: Python OCR and ML DDoS pipeline (feature extraction, model training, prediction)
+### 3.1 Architecture Diagram Text (ASCII)
+[User Browser]
+    |
+    | HTTPS or HTTP local
+    v
+[React Frontend]
+  - User pages (Upload, Files, Dashboard)
+  - Chat interface
+  - Admin SOC pages (DDoS Metrics, Threat Map)
+    |
+    | API calls to /
+api
+/*
+    v
+[Express Backend]
+  - Auth routes
+  - File routes
+  - OCR routes
+  - Search and AI routes
+  - DDoS and bot-classification routes
+  - Middleware: authentication + DDoS protection
+    |
+    | Data and processing integration
+    +------------------------------+
+    |                              |
+    v                              v
+[Storage Layer]                [Intelligence Layer]
+  - Local file storage            - OCR Python processor
+  - Optional AWS S3               - ML feature extractor
+  - Metadata JSON                 - Isolation Forest model
+  - Upload logs CSV               - Prediction script
+    |                              |
+    +--------------+---------------+
+                   |
+                   v
+            [Analytics and Security]
+            - Blocked events
+            - Threat map geolocation
+            - Risk scoring and escalation
+            - Zero-trust 
+signaling
+## 4. End-to-End Working Flow
+### 4.1 User Upload to AI Answer Flow
+1. User uploads a file from Upload page
+2. Backend receives file request through file upload route
+3. DDoS middleware evaluates request risk before processing
+4. File is stored (local storage by default, optional S3)
+5. Upload event is logged for ML telemetry
+6. OCR job runs asynchronously in background
+7. Extracted text is saved and synced into searchable metadata
+8. User asks question in chat interface
+9. Search route collects relevant OCR content and ranks context
+10. Gemini model generates grounded answer from extracted content
+11. Frontend displays answer with source files
+### 4.2 DDoS Detection and 
+Defense
+ Flow
+1. Every upload event is recorded in logs with success or failure status
+2. Feature extraction converts 
+behavior
+ traces into ML features
+3. Isolation Forest predicts anomaly scores and risk levels
+4. Middleware enforces actions based on score and burst 
+behavior
+:
+   - Normal: allow
+   - Suspicious: throttle or challenge
+   - Malicious: block and record explanation factors
+5. Blocked events are exposed to admin dashboard APIs
+6. Threat map visualizes attack source clusters by geolocation
+7. Scheduled retraining refreshes model with new observed 
+behavior
+## 5. Module-by-Module Explanation
+This section explains all functional modules and what each contributes.
+## 5.1 Root and Orchestration Modules
+- 
+package.json
+ scripts module
+  - Runs frontend, backend, full stack, DDoS training, and attack simulation commands
+- RUN_ALL.ps1
+  - Interactive startup orchestration for project operations
+- attack_interface.ps1
+  - Interactive attack launcher with modes and controls
+- ddos_attack_simulator.ps1
+  - Generates synthetic attack traffic patterns for testing detection
+- QUICK_START.md, COMMANDS_REFERENCE.md
+  - Operational command documentation and onboarding
+## 5.2 Frontend Application Modules
+### 5.2.1 App Shell and Routing
+- App module
+  - Initializes global providers, toasts, routing, 
+behavior
+ tracking, and zero-trust guard polling
+- Route modules
+  - Landing, Auth, Dashboard, Files, Upload, Admin, DDoS Metrics, Not Found
+### 5.2.2 User Experience Modules
+- Upload page module
+  - Handles file upload interactions and status feedback
+  - Integrates chat visibility and upload refresh 
+behavior
+- Files page module
+  - File listing, searching, viewing, downloading, deleting
+  - AI query shortcut and chat embedding
+- Dashboard module
+  - Displays storage and file activity stats
+### 5.2.3 AI Chat UI Module
+- Chat interface module
+  - Maintains conversation state
+  - Sends AI query requests
+  - Renders responses and source file links
+### 5.2.4 Security Visibility Modules
+- DDoS Metrics page module
+  - Admin SOC dashboard for blocked events, blocked users, analytics, threat map
+- Threat Map module
+  - Leaflet visualization of attack origins and hotspot circles
+- 
+Behavior
+ Tracker module
+  - Collects client-side interaction telemetry for bot-probability inference
+## 5.3 Backend Service Modules
+### 5.3.1 Server Bootstrap Module
+- Server index module
+  - Loads environment configuration
+  - Creates required storage and ML directories
+  - Registers API route modules
+  - Serves frontend build when available
+  - Triggers startup OCR process-all and periodic retraining
+### 5.3.2 Authentication Modules
+- Auth route module
+  - Signup and login using 
+bcrypt
+ password hashing
+  - JWT generation and response payload
+- Auth middleware module
+  - Validates bearer token and injects user context
+### 5.3.3 File Management Modules
+- Files route module
+  - Upload, list, stats, delete
+  - Local and optional S3 support
+  - Malware placeholder scan logic
+  - Background OCR trigger after successful upload
+- S3 integration module
+  - 
+Presigned
+ URL support, object listing, upload, delete, bucket readiness
+### 5.3.4 OCR Pipeline Modules
+- OCR route module
+  - Validates files, runs OCR Python process, batch processing support
+- OCR content loader module
+  - Resolves extracted text from metadata and extracted-text artifacts
+- OCR Python processor module
+  - Supports PDF, image, and Word extraction
+  - Applies image preprocessing for OCR quality
+  - Syncs extracted content to metadata for search
+### 5.3.5 Search and AI Modules
+- Search route module
+  - Keyword and content-based retrieval over file corpus
+  - AI answer endpoint builds relevant context from OCR text
+  - Includes retry 
+behavior
+ for LLM rate-limit conditions
+- Gemini AI module
+  - Handles model selection fallback, retries, and answer generation prompting
+### 5.3.6 DDoS and Security Modules
+- DDoS middleware module
+  - Real-time risk enforcement and request gating
+  - User risk cache, burst trackers, blocked identities, and zero-trust state
+- DDoS service module
+  - Logs upload events
+  - Extracts real-time features from logs
+  - Runs prediction calls and fallback heuristic scoring
+- DDoS routes module
+  - Public ingest endpoint for simulator
+  - User risk status, system status, blocked events, blocked users, analytics, reset
+- Bot classify route module
+  - Converts interaction telemetry into bot-probability score
+### 5.3.7 Data and Persistence Modules
+- Database module
+  - MongoDB connection and schemas for upload logs and stats
+- Storage metadata module
+  - JSON metadata for OCR outputs and file attributes
+- Upload logs CSV module
+  - Canonical telemetry stream for ML extraction and analytics
+## 5.4 Machine Learning DDoS Subsystem Modules
+### 5.4.1 Data Feature Module
+- Feature extractor module
+  - Computes upload 
+behavior
+ features per user:
+    - burst uploads in time windows
+    - duplicate ratio
+    - average and max size
+    - failure rate
+    - time gaps between uploads
+    - IP diversity and unique hashes
+### 5.4.2 Model Training Module
+- Isolation Forest trainer module
+  - Normalizes features with 
+StandardScaler
+  - Trains Isolation Forest anomaly detector
+  - Saves model and scaler artifacts for inference
+### 5.4.3 Prediction Module
+- Predictor module
+  - Loads model and scaler
+  - Scores user 
+behavior
+ vectors
+  - Maps anomaly score to risk tiers
+  - Returns machine-readable security decisions
+### 5.4.4 Retraining Module
+- Retraining script module
+  - Refreshes model periodically to adapt to new traffic patterns
+## 6. Technology Stack and Software Used
+### 6.1 Frontend Technologies
+- React 18
+- TypeScript
+- Vite
+- React Router
+- 
+TanStack
+ React Query
+- Tailwind CSS
+- Radix UI components
+- Leaflet and OpenStreetMap for map rendering
+- 
+Lucide
+ icons
+### 6.2 Backend Technologies
+- Node.js
+- Express.js
+- Multer for multipart upload
+- JWT and 
+bcryptjs
+ for auth security
+- Mongoose and MongoDB for log persistence
+- AWS SDK S3 client for optional object storage
+### 6.3 AI and OCR Technologies
+- Google Gemini API for answer generation
+- Tesseract OCR via 
+pytesseract
+- pdf2image and Pillow
+- Optional OpenCV preprocessing
+### 6.4 Machine Learning Technologies
+- scikit-learn Isolation Forest
+- pandas and 
+numpy
+- 
+joblib
+ serialization
+- matplotlib and seaborn for analysis
+### 6.5 Tooling and Operations
+- PowerShell automation scripts for startup and attack simulation
+- Concurrently for multi-process local run
+- 
+ESLint
+ and TypeScript build toolchain
+## 7. Security Model Summary
+1. Authentication via JWT for protected flows
+2. Real-time DDoS scoring on upload paths
+3. Risk-based enforcement with block and throttle 
+behavior
+4. Bot-like 
+behavior
+ telemetry integration
+5. Admin threat visibility and reset controls
+6. Blocked event forensics and geolocation enrichment
+## 8. Deployment and Runtime Model
+### 8.1 Local Development Runtime
+- Frontend runs on default Vite port
+- Backend runs on Express API port
+- DDoS ML scripts run from Python virtual environment
+### 8.2 Typical Commands
+- 
+npm
+ install
+- 
+npm
+ run dev
+- 
+npm
+ run server
+- 
+npm
+ run 
+dev:full
+- 
+npm
+ run 
+ddos:quick
+- 
+npm
+ run attack
+### 8.3 Required Runtime Dependencies
+- Node.js and 
+npm
+- Python and pip
+- Tesseract OCR installation for OCR extraction
+- Optional MongoDB and AWS credentials depending on feature usage
+## 9. Project Strengths
+- Strong integration between document intelligence and cybersecurity
+- Clear separation of user and admin experiences
+- Practical real-time 
+defense
+ 
+behavior
+ with explainability
+- Scripted simulation environment for repeatable testing
+- Extensible architecture for cloud storage and model evolution
+## 10. Recommended Next Enhancements
+1. Replace heuristic bot classifier with trained 
+behavioral
+ model
+2. Add role-based access control and hardened admin auth
+3. Add queue system for OCR jobs at scale
+4. Add test coverage for security-critical middleware paths
+5. Add CI pipeline for lint, build, unit tests, and model checks
+6. Add structured observability (metrics, traces, and alerting)
+## 11. Quick Module Index by Folder
+- 
+src
+  - Frontend pages, components, hooks, API client
+- server
+  - Express APIs, middleware, OCR orchestrator, AI integration, storage and security logic
+- 
+ddos_system
+/
+Application_Layer_DDOS
+  - ML data pipeline, training, prediction, simulator tools, model artifacts
+- public
+  - Static assets
+- tools
+  - Additional support utilities
+## 12. Conclusion
+CloudDrive
+-AI is a hybrid application that unifies secure file management, OCR intelligence, AI document reasoning, and active ML-driven cyber 
+defense
+. It demonstrates practical full-stack engineering with integrated data workflows, security operations visibility, and adaptive anomaly mitigation.

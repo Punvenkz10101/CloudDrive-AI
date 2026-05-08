@@ -46,3 +46,6 @@ ddos_system/Application_Layer_DDOS/data/extracted_features.csv
 __pycache__/
 *.pyc
 server/lib/ocr_process_temp.py
+
+# Salesforce / generated Apex metadata
+.sfdx/

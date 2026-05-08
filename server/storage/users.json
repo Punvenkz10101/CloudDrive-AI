@@ -4,5 +4,11 @@
     "email": "puneethvenkat2k03@gmail.com",
     "passwordHash": "$2a$10$hje8jEYhFMbJU1Sm3faR0eELmsT7giKKc7qtrKINI.qKrVlZjcUam",
     "createdAt": "2025-10-01T13:31:32.663Z"
+  },
+  {
+    "id": "1776521741850",
+    "email": "Puneeth@gmail.com",
+    "passwordHash": "$2a$10$yBGkBADevZkS0/wR8o3KdumXsBpQiSOMRB5DngoqGUEg88yeZzcBO",
+    "createdAt": "2026-04-18T14:15:41.850Z"
   }
 ]

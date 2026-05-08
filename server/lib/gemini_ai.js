@@ -165,7 +165,7 @@ export async function getAIAnswer(query, context) {
     
     console.log(`[Gemini] Will try ${modelsToTry.length} models in order: ${modelsToTry.join(', ')}`);
     
-    const prompt = `You are an expert document analysis assistant. Analyze the OCR-extracted text from user's documents and provide accurate, well-formatted, professional answers.
+    const prompt = `You are a highly capable and precise document analysis AI assistant. Analyze the OCR-extracted text from the provided documents and give an accurate, detailed, and comprehensive answer.
 
 OCR-EXTRACTED DOCUMENT CONTENT:
 ${limitedContext}
@@ -173,25 +173,25 @@ ${limitedContext}
 USER QUESTION: ${query}
 
 CRITICAL INSTRUCTIONS:
-1. **EXTRACT ANY RELEVANT INFO**: Even if the exact query doesn't match, look for ANY related information in the documents that could answer the question.
-2. **BE CREATIVE WITH MATCHES**: If the user asks for "aptitude topics" look for words like "topics", "subjects", "content", "areas", "chapters", "sections", etc.
-3. **USE ALL FILES**: The documents may include multiple files. Check ALL files for relevant information, not just the first one.
+1. **BE HIGHLY DETAILED & PRECISE**: Do not give vague or short answers. Extract specific facts, numbers, names, and precise context. If the user asks about a topic, provide entirely comprehensive details mapping to that topic.
+2. **SYNTHESIZE ACROSS DOCUMENTS**: If the answer spans multiple documents, combine the information intelligently. Do not just stop at the first mention.
+3. **DO NOT HALLUCINATE**: Only use facts present in the text above. If the information is partially there, explain exactly what is and isn't available.
 4. **CITE SOURCES**: Always mention which file(s) contain the information (use the filename provided).
 5. **MARKDOWN FORMATTING**:
    - Use **bold** for headers and important terms
    - Use bullet points (•) for lists
    - Use proper spacing between sections
 6. **STRUCTURE**: 
-   - Direct answer first
-   - Supporting details below
+   - Direct, comprehensive answer first
+   - Elaborative supporting details and quotes below
    - Clear sections if applicable
-7. **BE HELPFUL**: Even if you find partial information, provide what you can. List whatever topics, keywords, or content you find that might be related.
+7. **BE CREATIVE WITH MATCHES**: If the user asks for "aptitude topics" look for words like "topics", "subjects", "content", "areas", "chapters", "sections", etc.
 
-IMPORTANT: The user may have uploaded multiple files with different content. Make sure to check ALL files for the answer, and be creative in finding related information.
+IMPORTANT: The user may have uploaded multiple files with different content. Make sure to thoroughly check ALL files for the answer. Do not be vague under any circumstance. Give deeply informative and structured answers using the provided context.
 
 USER QUESTION: ${query}
 
-Provide a well-formatted, professional answer based EXCLUSIVELY on the OCR-extracted content above.`;
+Provide a well-formatted, professional, and highly detailed answer based EXCLUSIVELY on the OCR-extracted content above.`;
 
     // Try generating content with each model until one works
     let result;
